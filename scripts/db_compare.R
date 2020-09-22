@@ -238,52 +238,16 @@ for (i in 1:length(test_taxon)) {
 names(out) <- test_taxon
 saveRDS(out, "./output/db_mismatch.rds")
 
-## EXTRAS...
-## GBIF species list
-## Download by bounding box in GBIF
-## Salticidae doi: https://www.gbif.org/occurrence/download/0041394-200613084148143
-## Download species list
-sp_dat <- fread(file.path(data_path, "db_compare","0041394-200613084148143.csv"))
-dim(sp_dat)
-names(sp_dat)
 
+## Create table
+out <- readRDS("./output/db_mismatch.rds")
 
-
-unique(sp_dat$scientificName)[1:5] ## https://dwc.tdwg.org/list/#dwc_scientificName; https://www.gbif.org/developer/occurrence#p_scientificName
-unique(sp_dat$acceptedScientificName)[1:5] ## https://dwc.tdwg.org/list/#dwc_acceptedScientificName
-unique(sp_dat$species)[1:5] ## https://www.gbif.org/developer/species#p_name
-
-length(unique(sp_dat$scientificName)) 
-length(unique(sp_dat$acceptedScientificName))
-length(unique(sp_dat$species))
-
-# length(setdiff(unique(sp_dat$scientificName), unique(sp_dat$acceptedScientificName)))
-# length(setdiff(unique(sp_dat$acceptedScientificName), unique(sp_dat$scientificName)))
-
-## See: https://data-blog.gbif.org/post/gbif-backbone-taxonomy/
-## same canonical names with different authors are allowed twice, but only one is ever accepted... the algorithm identifies the homotypic group of names sharing the same basionym. Only one name is accepted per homotypic group and all the other names are marked as synonyms as they are homotypic. The most trusted first name added stays as the accepted name.
-
-
-
-
-
-# '%!in%' <- function(x,y)!('%in%'(x,y))
-# if (length(unique(gbif_tax_scientificName)) != length(unique(gbif_tax_canonicalName))){
-#   gbif_tax_scientificName... only get first words before capital (use Augusts code here)
-#   length(which(unique(gbif_tax_canonicalName) %!in% unique(gbif_tax_scientificName)))
-# }
-
-
-
-# ## Only extract by boundinng box: NOT GOOD
-# sp <- as.matrix(dat[,.(decimalLongitude,decimalLatitude)])
-# x <- matrix(NA,4,2)
-# x[1,] <- c(bbox(aus.mask)[1,1], bbox(aus.mask)[2,1])
-# x[2,] <- c(bbox(aus.mask)[1,1], bbox(aus.mask)[2,2])
-# x[3,] <- c(bbox(aus.mask)[1,2], bbox(aus.mask)[2,1])
-# x[4,] <- c(bbox(aus.mask)[1,2], bbox(aus.mask)[2,2])
-# 
-# grd.pts <- mgcv::in.out(x, sp)
-# dat <- dat[!is.na(grd.pts),]
-# dim(dat)
-# points(dat[,.(decimalLongitude,decimalLatitude)], col = "blue")
+df <- data.frame(matrix(ncol = length(out[[1]])-5, nrow = length(out)))
+colidx <- (1:length(out[[1]]))[-c(1, grep("not", names(out[[1]])))]
+colnames(df) <- names(out[[1]])[colidx]
+rownames(df) <- names(out)
+for(i in 1:length(colidx)){
+  df[,i] <- sapply(out, "[[", colidx[i])
+}
+saveRDS(df, "./output/db_mismatch_table.rds")
+write.csv(df, "./output/db_mismatch_table.csv")

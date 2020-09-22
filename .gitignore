@@ -3,10 +3,9 @@
 data/
 output/
 
-
-
 # R files #
 ###########
+.docx
 .Rproj.user
 .Rhistory
 .Rapp.history

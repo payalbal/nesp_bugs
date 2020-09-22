@@ -1,4 +1,6 @@
 ## Create australia coastline shapefile
+x <- c("sp", "raster")
+lapply(x, require, character.only = TRUE)
 
 ## Set working environnment
 bugs_data <- "/Volumes/uom_data/nesp_bugs_data"
@@ -65,7 +67,7 @@ temp <- rgeos::gUnionCascaded(aus_mainland)
 ## Includes offshore territoties and Islands
 ## Needs to be clipped down by extent/boundinng box INCLUDING Australia + territories EXCLUDING Antractica
 aus_noaa <- rgdal::readOGR("/Volumes/uom_data/nesp_bugs_data/Topo250kv3AMBIS3islBlnNoaa/Topo250kv3AMBIS3islBlnNoaa.shp")
-
+raster::extent(aus_noaa@bbox)
 
 ## EXTRA
 # aus.mask  <- sf::st_read("./output/aus_tileedge.shp")
