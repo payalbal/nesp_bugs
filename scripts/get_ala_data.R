@@ -169,7 +169,7 @@ get_ala_data <- function(species,
                              NA)
   
   
-  ### Save specieas plots ####
+  ### Save species plots ####
   if(save.map == TRUE){
     
     map_filename <- sprintf("%s/%s.pdf",

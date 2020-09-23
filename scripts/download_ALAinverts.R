@@ -17,17 +17,22 @@ rm(x)
 source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_data.R"))
 output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 
-## Local paths
-source(file.path(getwd(), "scripts/get_ala_data.R"))
-output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
+# ## Local paths
+# source(file.path(getwd(), "scripts/get_ala_data.R"))
+# output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 
 ala_dir <- file.path(output_dir, "ala_data")
 if(!dir.exists(ala_dir)) dir.create(ala_dir)
+
+## No data species txt file
+nodatalog <- file.path(output_dir, "nodata_log.txt")
+writeLines(c("species0"), nodatalog)
 
 
 ## Load AFD taxonnomic checklist ####
 afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
 afd_species <- unique(afd_taxonomy$VALID_NAME)
+length(afd_species)
 
 # ## Trial species
 # afd_species <- unique(afd_taxonomy[FAMILY == toupper("Salticidae")]$VALID_NAME)
@@ -39,35 +44,24 @@ afd_species <- unique(afd_taxonomy$VALID_NAME)
 
 
 ## Download data by species
-for (species in afd_species[1:10]){
-  
-  # get_ala_data(species,
-  #              extra_fields = TRUE,
-  #              specimens_only = TRUE,
-  #              remove_duplicates = TRUE,
-  #              dst = ala_dir,
-  #              save.map = TRUE,
-  #              reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
-  #              email = "bal.payal@gmail.com")
-  
-  tryCatch(get_ala_data(species,
-                        extra_fields = TRUE,
-                        specimens_only = TRUE,
-                        remove_duplicates = TRUE,
-                        dst = ala_dir,
-                        save.map = TRUE,
-                        reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
-                        email = "bal.payal@gmail.com"),
-           error = function(e){ 
-             paste("\nNot run: no records found for", species, "in ALA")
-           })
-}
-
-## Get data ####
-
-
-
-## Check for duplicates
+invisible(lapply(afd_species,
+                 function(x){
+                   tmp <- tryCatch(expr = get_ala_data(x,
+                                                       extra_fields = TRUE,
+                                                       specimens_only = TRUE,
+                                                       remove_duplicates = TRUE,
+                                                       dst = ala_dir,
+                                                       save.map = TRUE,
+                                                       reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
+                                                       email = "bal.payal@gmail.com"),
+                                   error = function(e){ 
+                                     print(paste("\nNot run: no records for", x))
+                                     
+                                     cat(paste(x, "\n"),
+                                         file = nodatalog, 
+                                         append = T)
+                                   })
+                 }))
 
 
 ## Cleaning
