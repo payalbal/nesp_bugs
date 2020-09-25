@@ -9,9 +9,10 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table", "ALA4R", "sp", "raster")
+x <- c("data.table", "ALA4R", "sp", "raster", "future", "future.apply")
 lapply(x, require, character.only = TRUE)
 rm(x)
+future::availableCores()
 
 ## Server paths
 source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_data.R"))
@@ -25,7 +26,7 @@ ala_dir <- file.path(output_dir, "ala_data")
 if(!dir.exists(ala_dir)) dir.create(ala_dir)
 
 ## No data species txt file
-nodatalog <- file.path(output_dir, "nodata_log.txt")
+nodatalog <- file.path(output_dir, "nodataspecies_log.txt")
 writeLines(c("species0"), nodatalog)
 
 
@@ -42,26 +43,33 @@ length(afd_species)
 # afd_species <- afd_species[grep("(", afd_species, fixed = TRUE)]
 # species = afd_species[110]
 
-
 ## Download data by species
-invisible(lapply(afd_species,
-                 function(x){
-                   tmp <- tryCatch(expr = get_ala_data(x,
-                                                       extra_fields = TRUE,
-                                                       specimens_only = TRUE,
-                                                       remove_duplicates = TRUE,
-                                                       dst = ala_dir,
-                                                       save.map = TRUE,
-                                                       reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
-                                                       email = "bal.payal@gmail.com"),
-                                   error = function(e){ 
-                                     print(paste("\nNot run: no records for", x))
-                                     
-                                     cat(paste(x, "\n"),
-                                         file = nodatalog, 
-                                         append = T)
-                                   })
-                 }))
+plan(multiprocess, workers = future::availableCores()-2)
+options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. availablecores-1?/RAM-10?
+
+start.time <- Sys.time()
+invisible(future.apply::future_lapply(afd_species,
+                                      function(x){
+                                        tmp <- tryCatch(expr = get_ala_data(x,
+                                                                            extra_fields = TRUE,
+                                                                            specimens_only = TRUE,
+                                                                            remove_duplicates = TRUE,
+                                                                            dst = ala_dir,
+                                                                            save.map = TRUE,
+                                                                            reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
+                                                                            email = paste0("bal.payal+", sample(1:100, 1), "@gmail.com")),
+                                                        error = function(e){ 
+                                                          print(paste("\nNot run: no records for", x))
+                                                          
+                                                          cat(paste(x, "\n"),
+                                                              file = nodatalog, 
+                                                              append = T)
+                                                        })
+                                      }))
+end.time <- Sys.time()
+end.time - start.time
+
+
 
 
 ## Cleaning
