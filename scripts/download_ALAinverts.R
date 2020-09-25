@@ -84,9 +84,6 @@ if(any(grepl("assertions", names(df)))){
 ## Check recorded issues with geographic or taxonomic fields
 ## Fields: "taxonomic_kosher","geospatial_kosher"
 
-## Save species data
-
-
 
 ## Test plot
 aus.mask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
@@ -103,65 +100,7 @@ ala_fields()$name[grep("assertions", ala_fields("occurrence")$name)]
 ala_fields()$description[grep("assertions", ala_fields("occurrence")$name)]
 
 
-library(spocc)
-library(rgbif)
 
-key <- name_suggest(q='Gnathifera', rank='phylum')$key[1]
-occ_search(taxonKey=key, limit=20)
-occ_data(scientificName=..., limit=20)
-
-spocc::occ(query = "Chordata",
-           from = "gbif",
-           geometry = "POLYGON((112.76 -10.23, 155.48 -10.23, 155.48 -44.28, 112.76 -44.28, 112.76 -10.23))",
-           limit = 10)
-
-
-## List names of native species 
-data_sp <- read.csv(file.path(data_path, "all_sp_records-2020-03-19.csv"))
-data_sp <- data_sp[data_sp$Invasive %in% "",]
-data_sp <- data_sp[,c("Species.Name", "Kingdom", 
-                      "Phylum", "Class", "Order", 
-                      "Family", "Genus", "Conservation")]
-
-
-
-
-## EXTRAS: From CWare's ala_functions
-## Merge downloaded data
-## system(paste0("curl https://raw.githubusercontent.com/cwarecsiro/gdmEngine/master/gdmEngine/R/merge_downloads.R -o ", "./scripts/merge_ala_downloads.R"))
-library(data.table)
-library(dplyr)
-source("./scripts/merge_ala_downloads.R")
-ala.data <- merge_downloads(src = file.path(ala_path, "raw_files/"), output.folder = ala_path,
-                            output.name = paste0("merged_data_", Sys.Date()),
-                            keep_unzip = FALSE,
-                            parallel = FALSE, 
-                            verbose = TRUE)
-
-## Filter merged data
-## system(paste0("curl https://raw.githubusercontent.com/cwarecsiro/gdmEngine/master/gdmEngine/R/filter_ALA_data.R -o ", "./scripts/filter_ala_data.R"))
-library(sp)
-library(raster)
-aus.mask <- readRDS(file.path(data_path,"RData", "mask_aus.rds"))
-ala.data <- read.csv(list.files(ala_path, pattern = c("merged.*\\.csv"), full.names = TRUE))
-source("./scripts/filter_ala_data.R")
-filtered.data <- filter_ALA_data(ALA.download.data = ala.data$data,             
-                                 output.folder = ala_path,       
-                                 output.name = "filtered_data_",  
-                                 domain.mask = aus.mask,                   
-                                 earliest.year = 1950,
-                                 spatial.uncertainty.m = 2000,
-                                 select.fields = NULL,
-                                 verbose=TRUE)
-
-## Subset filtered data to species with >=20 records
-dat <- as.data.table(filtered.data)
-dat.counts <- dat[,.N, by = scientificName]
-sp.names <- dat.counts[N >= 20]$scientificName
-dat <- dat[scientificName %in% sp.names]
-
-saveRDS(dat, file.path(ala_path, "ala_data.rds"))
-write.csv(dat, file.path(ala_path, "ala_data.csv"), row.names=FALSE) ## larger file.  
 
 
 

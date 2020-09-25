@@ -407,3 +407,17 @@ load_db_data <- function(species,
 
 # load_pres_bg_data("Atrichornis rufescens",
 #                   email = "davidpw@student.unimelb.edu.au")
+
+
+library(spocc)
+library(rgbif)
+
+key <- name_suggest(q='Gnathifera', rank='phylum')$key[1]
+occ_search(taxonKey=key, limit=20)
+occ_data(scientificName=..., limit=20)
+
+spocc::occ(query = "Chordata",
+           from = "gbif",
+           geometry = "POLYGON((112.76 -10.23, 155.48 -10.23, 155.48 -44.28, 112.76 -44.28, 112.76 -10.23))",
+           limit = 10)
+
