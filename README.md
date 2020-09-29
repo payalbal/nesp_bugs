@@ -1,19 +1,31 @@
-## nesp_bugs.Rproj
+# nesp_bugs.Rproj
 NESP invetebrate project titled 'Fire-affected invertebrates: Priority species and management response'
 
-# TEam
+## Team
 John Woinarski, CDU
 Jess Marsh, CDU
 Payal Bal, UoM
 
-# Collabvorators
+## Collaborators
 ...
 
-# Biodiversity data sources
-...
+## Biodiversity data sources
+ALA: https://www.ala.org.au/
 
   
-# Covariate data sources
+## Covariate data sources
 ...
   
-# Workflow
+## Workflow
+1. Create clean taxonomic checklist for analyses
+
+2. Download occurrence records from ALA
+
+3. Clean ALAL data
+
+4. Summarise ALA data
+
+5. Map data by species
+
+6. Fire imapct...
+...
