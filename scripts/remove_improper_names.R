@@ -19,7 +19,7 @@ remove_improper_names <- function(name_vector,
   }
   
   ## Clean trailing and double spaces
-  name_vector <- stringr::str_squish(name_vector)
+  name_vector_raw <- name_vector <- stringr::str_squish(name_vector)
   originalN <- length(name_vector)
   
   # ## Remove names with brackets and quotation marks
@@ -43,7 +43,7 @@ remove_improper_names <- function(name_vector,
   #          regexpr(" \'", name_vector[grep(" \'", name_vector, fixed = TRUE)], 
   #                  fixed=TRUE)-1)
   
-  ## Record removed species
+  ## Record improper species names as idenitfied by taxa modifiers
   if (improper.species.list){
     improper_species <- name_vector[(
       Reduce(union, 
@@ -91,7 +91,6 @@ remove_improper_names <- function(name_vector,
     
   }
   
-  
   ##  Set to NA all names with taxa modifiers (this list keeps subspecies and variety)
   name_vector[(
     Reduce(union, 
@@ -137,8 +136,11 @@ remove_improper_names <- function(name_vector,
            ))
   )] <- NA
   
+  ## Remove NA from list
+  name_vector <- na.omit(name_vector)
   
-  ##   [Optional] Remove single word names (likely higher taxa without species suffix)
+  
+  ## [Optional] Remove single word names (likely higher taxa without species suffix)
   if (!allow.higher.taxa){
     # name_vector[grep(" ", name_vector, fixed = TRUE, invert = TRUE)] <- NA
     ##  set all names witout a space to NA, which should work because we fixed double and trailing space 
@@ -155,14 +157,19 @@ remove_improper_names <- function(name_vector,
   
   if (length(improper_species) != 0){
     message(cat("# Improper names (indicated by NAs) in updated species list: "), 
-            sum(is.na(species_record$updated_list)))
+            length(improper_species))
     
     ## Print messages on screen
-    print(paste0("Number of species removed: ", (originalN - length(name_vector))))
-    print(paste0("Proprotion of species removed: ", (originalN - length(name_vector))/originalN))
-    print(paste0("Number of species retained: ", length(name_vector)))
-    message(cat("Is #species = #original species - #removed species? : ", 
-                length(name_vector) == (length(name_vector) - length(improper_species))))
+    message(cat("Original number of species: "),
+            originalN)
+    message(cat("Number of species removed: "), 
+              length(improper_species))
+    message(cat("Number of species retained: "), 
+            length(name_vector))
+    message(cat("Proprotion of species removed: "),
+            length(improper_species)/originalN)
+    message(cat("Is #species retained = #species inn raw list - #species removed? : "),
+            length(name_vector) == (length(name_vector_raw) - length(improper_species)))
     
   }else {
     message("No improper species found in checklist")

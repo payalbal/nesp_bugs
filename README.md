@@ -1,6 +1,11 @@
 # nesp_bugs.Rproj
 NESP invetebrate project titled 'Fire-affected invertebrates: Priority species and management response'
 
+[---Under dev---]
+
+## Contact author
+payal.bal@unimelb.edu.au
+
 ## Team
 John Woinarski, CDU
 Jess Marsh, CDU
@@ -17,9 +22,13 @@ ALA: https://www.ala.org.au/
 ...
   
 ## Workflow
-1. Create clean taxonomic checklist for analyses
+1. Create clean taxonomic checklist for analyses 
++ Get checklist from Asutralian Faunal Directory: https://biodiversity.org.au/afd/home
++ ... list steps...
 
 2. Download occurrence records from ALA
+function: get_ala_taxondata.R; get_ala_spdata.R
+script: download_ALA_bytaxon.R; download_ALA_byspecies.R
 
 3. Clean ALAL data
 
@@ -27,5 +36,5 @@ ALA: https://www.ala.org.au/
 
 5. Map data by species
 
-6. Fire imapct...
+6. Fire imapcts...
 ...

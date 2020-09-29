@@ -12,13 +12,13 @@ x <- c("data.table", "ALA4R", "sp", "raster", "future", "future.apply")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
-# ## Server paths
-# source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_taxondata.R"))
-# output_dir = file.path(getwd(), "nesp_bugs", "outputs")
+## Server paths
+source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_taxondata.R"))
+output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 
-## Local paths
-source(file.path(getwd(), "scripts/get_ala_taxondata.R"))
-output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
+# ## Local paths
+# source(file.path(getwd(), "scripts/get_ala_taxondata.R"))
+# output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 
 ala_dir <- file.path(output_dir, "ala_data")
 if(!dir.exists(ala_dir)) dir.create(ala_dir)
@@ -107,7 +107,19 @@ invisible(future.apply::future_lapply(afd_taxon,
 end.time <- Sys.time()
 end.time - start.time ## Time difference of 58.61595 mins
 
-# 
+
+## Check files for fields as columns
+ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
+f <- ala[15]
+f <- readRDS(f)
+f$counts
+length(names(f$data))
+
+all(fields %in% names(f$data))
+
+
+
+
 # ## EXTRA
 # ## Explore ALAL fieldas
 # ala_fields("occurrence", as_is=TRUE)

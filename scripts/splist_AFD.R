@@ -2,7 +2,11 @@
 
 ## Set working environment ####
 data_path <- "/Volumes/uom_data/nesp_bugs_data"
+output_dir  <-  "/Volumes/uom_data/nesp_bugs_data/outputs"
 
+## Functions ####
+source("./scripts/remove_improper_names.R")
+'%!in%' <- function(x,y)!('%in%'(x,y))
 
 ## Australian Faunal Directory taxonomy
 ## Species lists for selected phyla created by AFD; australianfaunaldirectory@awe.gov.au
@@ -13,30 +17,21 @@ data_path <- "/Volumes/uom_data/nesp_bugs_data"
   # afd_species <- do.call("rbind",lapply(afd_files, FUN = function(files){ read.csv(files)}))
   # readr::write_csv(afd_species, "./output/afd_specieslist_full.csv")
 
-afd_species_all <- afd_species <- read.csv("./output/afd_splist_full.csv")
+afd_species <- read.csv(file.path(output_dir, "afd_splist_full.csv"))
 all_species <- afd_species$VALID_NAME
 
 
 ## ------------------------------ ##
 ## Remove improper names ####
 ## ------------------------------ ##
-source("./scripts/remove_improper_names.R")
 species_record <- remove_improper_names(as.character(all_species),
                                allow.higher.taxa = FALSE,
                                allow.subspecies = TRUE)
 sum(is.na(species_record$updated_list))
 str(species_record)
 
-## Update species list vector 
-species <- as.character(na.omit(species_record$updated_list))
-message(cat("Is #species = #original species - #removed species? : ", 
-            length(species) == (length(species_record$updated_list) - length(species_record$improper_species))))
-
-print(paste0("number of species lost: ", (length(all_species) - length(species))))
-print(paste0("proprotion of species lost: ", ((length(all_species) - length(species))/length(all_species))))
-print(paste0("number of species retained: ", length(species)))
-
 ## Update AFD taxonomy based on selected species
+species <- as.character(na.omit(species_record$updated_list))
 afd_species <- afd_species[which(afd_species$VALID_NAME %in% species),]
   ## Note:  mismatch between length(species) and dim(ala_species), 
   ##        possibly due to duplicates being removed. 
@@ -48,15 +43,17 @@ afd_species <- afd_species[which(afd_species$VALID_NAME %in% species),]
 ## Source: https://lists.ala.org.au/speciesListItem/list/dr9884#list
 griis_species <- read.csv(file.path(data_path, "ALA/GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv"))
 
-message(cat("number of AFD species listed in GRIIS: ", length(which(afd_species$VALID_NAME %in% griis_species$Supplied.Name))))
+message(cat("number of AFD species listed in GRIIS: "),
+        length(which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)))
+
 message("AFD species in GRIIS - Global Register of Introduced and Invasive Species - Australia: ")
 afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
 
-'%!in%' <- function(x,y)!('%in%'(x,y))
+message("Removing AFD species in GRIIS ...")
 afd_species <- afd_species[which(afd_species$VALID_NAME %!in% griis_species$Supplied.Name),]
 
 
-## Checks
+## Checks for special characters
 length(afd_species$VALID_NAME[grep("\"", afd_species$VALID_NAME, fixed = TRUE)])
 length(afd_species$VALID_NAME[grep("\'", afd_species$VALID_NAME, fixed = TRUE)])
 length(afd_species$VALID_NAME[grep("(", afd_species$VALID_NAME, fixed = TRUE)])
@@ -79,8 +76,8 @@ length(unique(afd_species$COMPLETE_NAME))
   ## JM - use COMPLETE_NAME for finding duplicates
 
 ## Duplicates in COMPLETE_NAME (excluding first appearance)
-message(cat("Number of duplicated COMPLETE_NAME (excluding first appearance): ", 
-            length(afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME)])))
+message(cat("Number of duplicated COMPLETE_NAME (excluding first appearance): "), 
+            length(afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME)]))
 message("duplicated COMPLETE_NAME: ")
 afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME)]
 
