@@ -1,4 +1,6 @@
-#' Load ALA data 
+#' Load ALA data by species name
+#' 
+#' @author Payal Bal
 #'
 #' @param species
 #' @param extra_fields darwin core fields: https://biocache.ala.org.au/ws/index/fields
@@ -17,7 +19,7 @@
 # testALA <- ALA4R::occurrences(taxon = "text:\"Zenodorus metallescens\"", download_reason_id = 5, email = "...")
 
 
-get_ala_data <- function(species,
+get_ala_spdata <- function(species,
                          extra_fields = TRUE,
                          specimens_only = TRUE,
                          remove_duplicates = TRUE,
@@ -141,11 +143,6 @@ get_ala_data <- function(species,
   ## Get rid of missing or incomplete long and lats
   ala_df <- na.omit(ala_df, cols = c("latitude", "longitude"))
   
-  ## Remove duplicates
-  if(remove_duplicates == TRUE){
-    ala_df <- ala_df[!duplicated(ala_df[ , c("longitude", "latitude")]), ]
-  }
-  
   ## Get rid of unusable long lat vals
   ala_df <- ala_df[ala_df$longitude > -180 &
                      ala_df$longitude < 180 &
@@ -155,6 +152,11 @@ get_ala_data <- function(species,
   # ## Remove generalised data (as much as possible)
   # if(any(grepl("dataGeneralizations", names(ala_df)))) {
   #   ala_df <- ala_df[ala_df$dataGeneralizationsOriginal == FALSE,]
+  # }
+  
+  # ## Remove duplicates
+  # if(remove_duplicates == TRUE){
+  #   ala_df <- ala_df[!duplicated(ala_df[ , c("longitude", "latitude")]), ]
   # }
   
   ## Check if any record left
@@ -234,60 +236,6 @@ get_ala_data <- function(species,
 #            "raw_sex","preparations",
 #            "outlier_layer",
 #            "taxonomic_kosher","geospatial_kosher")
-# 
-# 
-# ## Usinng htmlwidgets::saveWidget - NOT WORKING
-# ## Visualise those with fewer than 1k records
-# if(nrow(ala_df) <= 1000){
-#   
-#   sp.sf <- sf::st_as_sf(ala_df,
-#                         coords = c("longitude", "latitude"),
-#                         crs = sp::CRS("+proj=longlat +datum=WGS84")) 
-#   
-#   ## Comments from VErt team: all ALA and GBIF coord should be in wgs84
-#   ## - but this needs attention when adding more dataset in the future 
-#   ##y(and also some of ALA may be gda94 but incorrectly labelled according 
-#   ## to Lee Belbin (I think?) - but this may be beyond our ability to fix)
-#   
-#   sp.map <- mapview::mapview(sp.sf,
-#                              layer.name = species,
-#                              homebutton = FALSE)
-#   
-#   map_filename <- sprintf("%s/%s.html",
-#                           map_dir,
-#                           gsub(" ",
-#                                "_",
-#                                tolower(species)))
-#   
-#   map_filename <- paste0(getwd(), 
-#                          "/output/", 
-#                          gsub(" ", "_",tolower(species)),
-#                          ".html")
-#   
-#   htmlwidgets::saveWidget(sp.map@map,
-#                           file = map_filename)
-# 
-#   cat(paste0("Map is saved to ", map_filename), "\n")
-#   
-# } else {
-#   
-#   sp.map <- "more than 1k records, not mapped"
-#   
-# }
-# 
-# 
-# ## Possible fix for htmlwidgets::saveWidget - NOT WORKING EITHER
-# saveWidgetFix <- function (widget,file,...) {
-#   ## A wrapper to saveWidget which compensates for arguable BUG in
-#   ## saveWidget which requires `file` to be in current working
-#   ## directory.
-#   wd<-getwd()
-#   on.exit(setwd(wd))
-#   outDir<-dirname(file)
-#   file<-basename(file)
-#   setwd(outDir);
-#   htmlwidgets::saveWidget(widget,file=file,selfcontained = TRUE)
-# }
 # 
 # 
 # ## Clean records using coord cleaner

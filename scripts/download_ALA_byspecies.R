@@ -15,11 +15,11 @@ rm(x)
 future::availableCores()
 
 ## Server paths
-source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_data.R"))
+source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_spdata.R"))
 output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 
 # ## Local paths
-# source(file.path(getwd(), "scripts/get_ala_data.R"))
+# source(file.path(getwd(), "scripts/get_ala_spdata.R"))
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 
 ala_dir <- file.path(output_dir, "ala_data")
@@ -50,7 +50,7 @@ options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. ava
 start.time <- Sys.time()
 invisible(future.apply::future_lapply(afd_species,
                                       function(x){
-                                        tmp <- tryCatch(expr = get_ala_data(x,
+                                        tmp <- tryCatch(expr = get_ala_spdata(x,
                                                                             extra_fields = TRUE,
                                                                             specimens_only = TRUE,
                                                                             remove_duplicates = TRUE,
@@ -70,27 +70,22 @@ end.time <- Sys.time()
 end.time - start.time
 
 
+## Count files ####
+## Species with data
+sp_data <- list.files(file.path(ala_dir, "maps"), include.dirs = FALSE)
+# list.files(ala_dir, include.dirs = FALSE) ## lists "maps" folder as well
+sp_data <- gsub(".pdf", "", sp_data)
+length(sp_data)
+
+## Species without data
+sp_nodata <- read.csv(nodatalog)
+sp_nodata <- sp_nodata$species0
+length(sp_nodata)
 
 
-## Cleaning
-## Check taxonnomic issues
-## Check geographic issues
-## Check for assertions
-## Check for generalisations...
-if(any(grepl("assertions", names(df)))){
-  names(df)[which(grepl("assertions", names(df)))]
-}
-
-## Check recorded issues with geographic or taxonomic fields
-## Fields: "taxonomic_kosher","geospatial_kosher"
 
 
-## Test plot
-aus.mask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
-plot(aus.mask, col = "grey", axes = FALSE, box = FALSE, legend = FALSE)
-points(ala_df[,.(longitude, latitude)], pch = 4, col = "red", cex = 0.5)
-
-
+## EXTRA
 ## Explore ALAL fieldas
 ala_fields("occurrence", as_is=TRUE)
 names(ala_fields("occurrence"))
