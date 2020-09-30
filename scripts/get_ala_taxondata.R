@@ -5,7 +5,7 @@
 #' @param taxon
 #' @param get_counts_only only get number of data point, do bot download data
 #' @param fields ...
-#' @param extra_fields darwin core fields: https://biocache.ala.org.au/ws/index/fields
+#' @param include_assertions see: ala_fields("assertions",as_is=TRUE)
 #' @param BoR_filters basis of record filters - https://dwc.tdwg.org/list/#dwc_basisOfRecord + categories listed in https://biocache.ala.org.au/#tab_advanceSearch
 #' @param dst
 #' @param email
@@ -20,7 +20,7 @@
 get_ala_taxondata <- function(taxon,
                               get_counts_only = FALSE,
                               fields,
-                              extra_fields = TRUE,
+                              include_assertions = FALSE,
                               specimens_only = TRUE,
                               dst = NULL,
                               email #needed for ALA4R 'offline' download
@@ -35,6 +35,7 @@ get_ala_taxondata <- function(taxon,
                    "GenomicDNA")
   
   ## Extra DWC fields for download
+  ## https://biocache.ala.org.au/ws/index/fields
   dwc_fields <- c("el1055", "el1056", #endemism
                   "el682", #migratory
                   "disposition", 
@@ -79,30 +80,41 @@ get_ala_taxondata <- function(taxon,
     
     if (specimens_only == TRUE) {
       
-      if (extra_fields == TRUE) {
+      if (include_assertions == TRUE) {
         occ_ala <- ALA4R::occurrences(taxon = sprintf('text:"%s"', taxon),
                                       download_reason_id = 5, 
                                       email = email,
                                       fq = paste0("basis_of_record:", 
                                                   BoRfilters, collapse = " OR "),
+                                      qa = "all",
+                                      fields = fields,
                                       extra = dwc_fields)$data
       } else {
         occ_ala <- ALA4R::occurrences(taxon = sprintf('text:"%s"', taxon),
                                       download_reason_id = 5, 
                                       email = email,
                                       fq = paste0("basis_of_record:", 
-                                                  BoRfilters, collapse = " OR "))$data
+                                                  BoRfilters, collapse = " OR "),
+                                      qa = "none",
+                                      fields = fields,
+                                      extra = dwc_fields)$data
       }
+      
     } else {
-      if (extra_fields == TRUE) {
+      if (include_assertions == TRUE) {
         occ_ala <- ALA4R::occurrences(taxon = sprintf('text:"%s"', taxon),
                                       download_reason_id = 5, 
                                       email = email,
+                                      qa = "all",
+                                      fields = fields,
                                       extra = dwc_fields)$data
       } else {
         occ_ala <- ALA4R::occurrences(taxon = sprintf('text:"%s"', taxon),
                                       download_reason_id = 5, 
-                                      email = email)$data
+                                      email = email,
+                                      qa = "none",
+                                      fields = fields,
+                                      extra = dwc_fields)$data
       }
     }
     

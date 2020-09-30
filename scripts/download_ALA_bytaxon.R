@@ -20,8 +20,10 @@ output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 # source(file.path(getwd(), "scripts/get_ala_taxondata.R"))
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 
-ala_dir <- file.path(output_dir, "ala_data")
+ala_dir <- file.path(output_dir, "ala_data2")
 if(!dir.exists(ala_dir)) dir.create(ala_dir)
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
 
 ## No data species txt file
 nodatalog <- file.path(output_dir, "nodata_log.txt")
@@ -92,7 +94,7 @@ invisible(future.apply::future_lapply(afd_taxon,
                                         tmp <- tryCatch(expr = get_ala_taxondata(x,
                                                                                  get_counts_only = FALSE,
                                                                                  fields = fields,
-                                                                                 extra_fields = TRUE,
+                                                                                 include_assertions = TRUE,
                                                                                  specimens_only = TRUE,
                                                                                  dst = ala_dir,
                                                                                  email = paste0("bal.payal+", sample(1:100, 1), "@gmail.com")),
@@ -103,31 +105,46 @@ invisible(future.apply::future_lapply(afd_taxon,
                                                               file = nodatalog, 
                                                               append = T)
                                                         })
-                                      }))
+                                      }, future.seed = TRUE))
 end.time <- Sys.time()
-end.time - start.time ## Time difference of 58.61595 mins
+end.time - start.time
 
 
-## Check files for fields as columns
+## Checks
+## Check fields across all downnloads
 ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
-f <- ala[15]
-f <- readRDS(f)
-f$counts
-length(names(f$data))
+temp <- names(readRDS(ala[1])$data)
+for (i in 2:length(ala)) {
+  f <- ala[i]
+  f <- readRDS(f)
+  message(cat("Checking dataset ", i, " :", ala[i], " ...\n"),
+          cat("columns as per specified list = "),
+          all(temp==names(f$data)))
+}
 
-all(fields %in% names(f$data))
+all(fields %in% names(f$data)) ## beacuse names are different even if fields correspond
+fields[which(fields %!in% names(f$data))]
+
+## Check assertions are listed
+# ref: ala_fields("assertions",as_is=TRUE)
+"assertions" %in% names(f$data)
+unique(f$data$assertions)
 
 
 
 
 # ## EXTRA
-# ## Explore ALAL fieldas
+# ## Explore ALA fields
 # ala_fields("occurrence", as_is=TRUE)
 # names(ala_fields("occurrence"))
 # ala_fields("occurrence")$name
 # "assertions" %in% ala_fields("occurrence")$name
 # ala_fields()$name[grep("assertions", ala_fields("occurrence")$name)] 
 # ala_fields()$description[grep("assertions", ala_fields("occurrence")$name)]
+
+## ALA assertions
+ala_fields("assertions",as_is=TRUE)
+write.csv(ala_fields("assertions",as_is=TRUE), file = "./output/assertions.csv")
 
 
 
