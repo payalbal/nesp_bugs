@@ -1,3 +1,4 @@
+
 # Specific files/folders #
 ##########################
 data/
@@ -5,14 +6,15 @@ output/
 
 # R files #
 ###########
-.docx
-.Rproj.user
-.Rhistory
-.Rapp.history
-.RData
-.Ruserdata
-.RDataTmp
-.Rmd
+*.docx
+*.doc
+*.Rproj.user
+*.Rhistory
+*.Rapp.history
+*.RData
+*.Ruserdata
+*.RDataTmp
+*.Rmd
 
 # Generic file extensions from: https://gist.github.com/octocat/9257657 #
 # Compiled source #
