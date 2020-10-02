@@ -20,7 +20,7 @@ output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 # source(file.path(getwd(), "scripts/get_ala_taxondata.R"))
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 
-ala_dir <- file.path(output_dir, "ala_data2")
+ala_dir <- file.path(output_dir, "ala_data")
 if(!dir.exists(ala_dir)) dir.create(ala_dir)
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
@@ -111,25 +111,34 @@ end.time - start.time
 
 
 ## Checks
-## Check fields across all downnloads
+## Check field names across all downnloads
 ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
-temp <- names(readRDS(ala[1])$data)
+dat_cols <- names(readRDS(ala[1])$data)
 for (i in 2:length(ala)) {
-  f <- ala[i]
-  f <- readRDS(f)
+  f <- readRDS(ala[i])$data
   message(cat("Checking dataset ", i, " :", ala[i], " ...\n"),
-          cat("columns as per specified list = "),
-          all(temp==names(f$data)))
+          cat("field names as per specified list = "),
+          all(dat_cols==names(f)))
 }
 
 all(fields %in% names(f$data)) ## beacuse names are different even if fields correspond
 fields[which(fields %!in% names(f$data))]
 
-## Check assertions are listed
-# ref: ala_fields("assertions",as_is=TRUE)
-"assertions" %in% names(f$data)
-unique(f$data$assertions)
 
+## Check field classes across all downnloads
+ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
+ala <- names(sort(sapply(ala, file.size)))
+f <- readRDS(ala[1])$data
+dat_cols <- names(f)
+coltypes <- sapply(f[,..dat_cols], class)
+
+for (i in 2:length(ala)) {
+  f <- readRDS(ala[i])$data
+  f_coltypes <- sapply(f[,..dat_cols], class)
+  message(cat("Checking dataset ", i, " :", ala[i], " ...\n"),
+          cat("field classes as per specified list = "),
+          all(coltypes==f_coltypes))
+}
 
 
 

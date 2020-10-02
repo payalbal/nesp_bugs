@@ -36,6 +36,8 @@ get_ala_taxondata <- function(taxon,
   
   ## Extra DWC fields for download
   ## https://biocache.ala.org.au/ws/index/fields
+  ##  Note: qa = “all" preferred to extra = "assertions" 
+  ##  because latter only lists one assertion, even if the record has multiple
   dwc_fields <- c("el1055", "el1056", #endemism
                   "el682", #migratory
                   "disposition", 
@@ -74,9 +76,9 @@ get_ala_taxondata <- function(taxon,
   
   n.ala <- c(all = n.all, observation = n.obs,  specimen =  n.spec)
   
-  
   ## Download records from ALA ####
   if (get_counts_only == FALSE) {
+    rm(n.ala)
     
     if (specimens_only == TRUE) {
       
@@ -143,6 +145,10 @@ get_ala_taxondata <- function(taxon,
       stop(paste("Not run: No data with legitimate coordinates found for", taxon))
     }
     
+    ## Count records in cleaned data
+    n.clean <- nrow(occ_ala)
+    n.ala <- c(all = n.all, observation = n.obs,  specimen =  n.spec, cleaned = n.clean)
+    
     ## Save results ####
     saveRDS((list(data = occ_ala,
                   counts = n.ala)),
@@ -150,7 +156,7 @@ get_ala_taxondata <- function(taxon,
                              paste0(gsub(" ", "_", tolower(taxon)), ".rds")))
     
     ## Clear workspace
-    rm(n.ala, occ_ala)
+    rm(n.ala, n.clean, occ_ala)
     
   } else {
     
