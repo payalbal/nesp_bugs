@@ -1,5 +1,4 @@
 ## References:
-## https://github.com/Doi90/bushfireSOS/blob/master/R/load_pres_bg_data.R
 ## https://cloud.r-project.org/web/packages/ALA4R/ALA4R.pdf
 
 

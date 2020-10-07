@@ -33,7 +33,7 @@ str(species_record)
 ## Update AFD taxonomy based on selected species
 species <- as.character(na.omit(species_record$updated_list))
 afd_species <- afd_species[which(afd_species$VALID_NAME %in% species),]
-  ## Note:  mismatch between length(species) and dim(ala_species), 
+  ## Note:  mismatch between length(species) and dim(afd_species), 
   ##        possibly due to duplicates being removed. 
 
 

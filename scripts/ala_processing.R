@@ -8,111 +8,297 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table", "sp", "raster")
+x <- c("data.table", "sp", "raster", "rje", "stringr")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
 ## Server paths
 output_dir = file.path(getwd(), "nesp_bugs", "outputs")
+source(file.path(getwd(),"nesp_bugs", "scripts/remove_improper_names.R"))
+source(file.path(getwd(),"nesp_bugs", "scripts/get_AFDsynonyms.R"))
 
 # ## Local paths
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
+# source(file.path(getwd(), "scripts/remove_improper_names.R"))
+# source(file.path(getwd(), "scripts/get_AFDsynonyms.R"))
 
 ala_dir <- file.path(output_dir, "ala_data")
 
 ## Functions
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-
-## Merge downloaded data ####
-ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
-
-## Sort files by size
-ala <- names(sort(sapply(ala, file.size), decreasing = TRUE))
-
-## Create data table with Arthropoda dataset (biggest dataset)
-f <- readRDS(ala[1])
-dat_cols <- names(f$data)
-dat_counts <- t(as.data.frame(f$counts))
-dat_counts
-colnames(dat_counts) <- names(f$counts)
-ala_merged <- as.data.table(f$data)
-dim(ala_merged)
-coltypes <- sapply(ala_merged[,..dat_cols], class)
-rm(f)
-
-## Merge all datasets
-for (i in 2:length(ala)) {
-  f <- ala[i]
-  f <- readRDS(f)
-  c <- t(as.data.frame(f$counts))
-  f <- as.data.table(f$data)
-  
-  message(cat("Processing dataset ", i, " :", ala[i], " ..."))
-  
-  dat_counts <- rbind(dat_counts, c)      
-  message(cat("Total number of clean records: "),
-          sum(dat_counts[,4]))
-  
-  message(cat("Matching column classes..."))
-  f_coltypes <- as.character(sapply(f[,..dat_cols], class))
-  f_mismatch <- which(!(coltypes == f_coltypes))
-  for (k in f_mismatch) set(f, j = k, value = eval(parse(text=paste0("as.", coltypes[k], "(f[[k]])"))))
-  
-  f_coltypes <- as.character(sapply(f[,..dat_cols], class))
-  message(cat("Checking columns classes are same... "),
-          all(f_coltypes==coltypes))
-  
-  message(cat("Merging dataset ..."))
-  ala_merged <- rbind(ala_merged, f, use.names = TRUE, fill=TRUE)
-  message(cat("Dimensions of merged data: "),
-          dim(ala_merged)[1])
-  message("\n")
-  rm(c,f) 
-}
-
-
-## Check
-message(cat("#rows in merged data = sum of cleaned records : "),
-        nrow(ala_merged) == sum(dat_counts[,4]))
-
-## Save outputs
-rownames(dat_counts) <- gsub(".rds", "", basename(ala))
-saveRDS(dat_counts, file = file.path(output_dir, "ala_counts.rds"))
-
-saveRDS(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".rds")))
-write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".csv")))
-
-
-
-# names(temp)[names(temp) %!in% names(temp2)]
-# for (n in f_class){
-#   class(f[,..n]) <- coltypes[n]
-# }
-# f <- f %>%  
-#   mutate(names(f_class[j]) = eval(paste0("as.", org_class[j], "(", names(f_class[j]), ")")))names(temp2)[names(temp2) %!in% names(temp)]
-
-
-## Subset species as by AFD checklist ####
-ala_merged_raw <- ala_merged <- readRDS(file.path(output_dir, paste0("merged_ala_", Sys.Date(),".rds")))
-length(unique(ala_merged_raw$scientificName))
-
 ## Load AFD taxonomic checklist
 afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
-afd_taxon <- unique(afd_taxonomy$PHYLUM)
 afd_species <- unique(afd_taxonomy$VALID_NAME)
-# length(afd_species[grep("(", afd_species, fixed = TRUE)])
-# sp_words <- sapply(strsplit(as.character(afd_species), " "), length)
-# length(afd_species[which(sp_words == 3)])
+message(cat("Number of species in AFD checklist: "),
+        length(afd_species))
 
-ala_merged <- ala_merged[scientificName %in% afd_species]
+## Load ALA data
+ala_raw <- readRDS(file.path(output_dir, "merged_ala_2020-10-02.rds"))
+ala_species <- unique(ala_raw$scientificName)
+message(cat("Number of unique species in ALA data: "),
+        length(ala_species))
+message(cat("NAs in ALA species list: "),
+        sum(is.na(ala_species)))
+
+
+## ALA data cleaning ####
+## >> Find improper & incomplete names in ALA data ####
+species_record <- remove_improper_names(as.character(ala_species),
+                                        allow.higher.taxa = FALSE,
+                                        allow.subspecies = TRUE)
+message(cat("# Improper species names found in ALA data: "),
+        length(species_record$improper_species))
+# message("Improper species names found in ALA data: ")
+# species_record$improper_species
+message(cat("# Incomplete species names found in ALA data: "),
+        length(species_record$incomplete_species))
+message(cat("NAs in cleaned ALA species list: "),
+        sum(is.na(species_record$updated_list)))
+message(cat("Duplicates in cleaned ALA species list: "),
+        length(species_record$updated_list[duplicated(species_record$updated_list)]))
+
+
+## >> Remove improper & incomplete names from ALA data ####
+ala_species <- as.character(na.omit(species_record$updated_list))
+ala_dat <- ala_raw[which(ala_raw$scientificName %in% ala_species),]
+
+message(cat("Number of records in raw ALA data: "),
+        nrow(ala_raw))
+message(cat("Number of records in cleaned ALA data: "),
+        nrow(ala_dat))
+message(cat("Prop of records lost in cleaning ALA data: "),
+        nrow(ala_dat)/nrow(ala_raw))
+message(cat("Proprotion of species removed: "),
+        (length(unique(ala_raw$scientificName))-
+           length(ala_species))/length(unique(ala_raw$scientificName)))
+
+## Checks
+length(ala_species) == length(unique(ala_dat$scientificName))
+rje::is.subset(ala_species, unique(ala_dat$scientificName))
+rje::is.subset(unique(ala_dat$scientificName), ala_species)
+sum(ala_species==unique(ala_dat$scientificName))
+
+
+## Identify ALA species not found in AFD checklist ####
+## ALA scientificName compared against VALID_NAME and SYNONYMS in AFD checklist
+## Species names categorised by number of words in the name for comparisons  
+ala_species <- unique(ala_dat$scientificName)
+message(cat("Are all ALA species contained in the AFD checklist: "),
+        rje::is.subset(ala_species, afd_species))
+
+## >> ALA species: 5-word names ####
+sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
+unique(sp_words)
+
+n = 5
+
+length(ala_species[which(sp_words == n)])
+message(cat("Species found in AFD: "),
+        ala_species[which(sp_words == n)] %in% afd_species)
+ala_species[which(sp_words == n)]
+
+## Check for species manually in ALA
+grep("Metapenaeus endeavouri", ala_species)
+ala_species[grep("Metapenaeus endeavouri", ala_species)]
+ala_dat[grep("Metapenaeus endeavouri", ala_dat$scientificName)]$scientificName
+
+grep("Metapenaeus ensis", ala_species)
+ala_species[grep("Metapenaeus ensis", ala_species)]
+ala_dat[grep("Metapenaeus ensis", ala_dat$scientificName)]$scientificName
+
+ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]$scientificName
+
+## Check for species manually in AFD
+grep("Metapenaeus endeavouri", afd_species)
+afd_taxonomy[VALID_NAME == "Metapenaeus endeavouri"]$SYNONYMS
+grep("Penaeopsis endeavouri", afd_taxonomy$VALID_NAME)
+grep("Penaeopsis endeavouri", afd_taxonomy$COMPLETE_NAME)
+
+grep("Metapenaeus ensis", afd_species)
+afd_taxonomy[VALID_NAME == "Metapenaeus ensis"]$SYNONYMS
+grep("Penaeus ensis", afd_taxonomy$VALID_NAME)
+grep("Metapenaeus philippinensis", afd_taxonomy$VALID_NAME)
+grep("Penaeus incisipes", afd_taxonomy$VALID_NAME)
+grep("Penaeus mastersii", afd_taxonomy$VALID_NAME)
+
+## Remove species from dataset: No matches found [check with JM]
+message(cat("Number of records to be removed: "),
+        nrow(ala_dat[which(ala_dat$scientificName %in% ala_species[which(sp_words == n)]),]))
+dim(ala_dat)
+ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_species[which(sp_words == n)]),]
+dim(ala_dat)
+
+## >> ALA species: 4-word names ####
+ala_species <- unique(ala_dat$scientificName)
+sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
+unique(sp_words)
+
+n = 4
+
+length(ala_species[which(sp_words == n)])
+message(cat("Number of species not found in AFD: "),
+        sum(ala_species[which(sp_words == n)] %!in% afd_species))
+ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+
+
+## Checking for species manually
+matches <- get_AFDsynonyms(ala_names, afd_taxonomy)
+
+message(cat("Synonyms found for full species names for: "),
+        sum(!is.na(sapply(matches, "[[", 1))), " species")
+
+message(cat("Synonyms found for genus (only) names for: "),
+        sum(!is.na(sapply(matches, "[[", 2))), " species")
+
+message(cat("Synonyms found for species (only) names for: "),
+        sum(!is.na(sapply(matches, "[[", 3))), " species")
+
+## Save otputs
+y <- rbindlist(matches, fill=FALSE)
+y <- cbind(ala_names, y)
+write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
+
+## Remove species from dataset: No matches found [check with JM]
+message(cat("Number of records to be removed: "),
+        length(which(ala_dat$scientificName %in% ala_names)))
+
+dim(ala_dat)
+ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
+dim(ala_dat)
+
+
+## >> ALA species: 3-word names ####
+ala_species <- unique(ala_dat$scientificName)
+sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
+unique(sp_words)
+
+n = 3
+
+length(ala_species[which(sp_words == n)])
+message(cat("Number of species not found in AFD: "),
+        sum(ala_species[which(sp_words == n)] %!in% afd_species))
+ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+
+## Checking for species manually
+matches <- get_AFDsynonyms(ala_names, afd_taxonomy)
+
+message(cat("Synonyms found for full species names for: "),
+        sum(!is.na(sapply(matches, "[[", 1))), " species")
+names(matches[!is.na(sapply(matches, "[[", 1))])
+
+message(cat("Synonyms found for genus (only) names for: "),
+        sum(!is.na(sapply(matches, "[[", 2))), " species")
+names(matches[!is.na(sapply(matches, "[[", 2))])
+
+message(cat("Synonyms found for species (only) names for: "),
+        sum(!is.na(sapply(matches, "[[", 3))), " species")
+names(matches[!is.na(sapply(matches, "[[", 3))])
+
+## Save otputs
+y <- rbindlist(matches, fill=FALSE)
+y <- cbind(ala_names, y)
+write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
+
+## Remove species from dataset: No matches found [check with JM]
+message(cat("Number of records to be removed: "),
+        length(which(ala_dat$scientificName %in% ala_names)))
+
+dim(ala_dat)
+ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
+dim(ala_dat)
+
+
+## >> ALA species: 2-word names ####
+ala_species <- unique(ala_dat$scientificName)
+sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
+unique(sp_words)
+
+n = 2
+
+length(ala_species[which(sp_words == n)])
+message(cat("Number of species not found in AFD: "),
+        sum(ala_species[which(sp_words == n)] %!in% afd_species))
+ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+
+## Checking for species manually
+matches <- get_AFDsynonyms(ala_names, afd_taxonomy)
+
+message(cat("Synonyms found for full species names for: "),
+        sum(!is.na(sapply(matches, "[[", 1))), " species")
+names(matches[!is.na(sapply(matches, "[[", 1))])
+
+message(cat("Synonyms found for genus (only) names for: "),
+        sum(!is.na(sapply(matches, "[[", 2))), " species")
+names(matches[!is.na(sapply(matches, "[[", 2))])
+
+message(cat("Synonyms found for species (only) names for: "),
+        sum(!is.na(sapply(matches, "[[", 3))), " species")
+names(matches[!is.na(sapply(matches, "[[", 3))])
+
+## Save otputs
+y <- rbindlist(matches, fill=FALSE)
+y <- cbind(ala_names, y)
+write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
+
+## Remove species from dataset: No matches found [check with JM]
+message(cat("Number of records to be removed: "),
+        length(which(ala_dat$scientificName %in% ala_names)))
+
+
+ala_dat_pre2 <- ala_dat
+dim(ala_dat)
+ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
+dim(ala_dat)
+
+
+## Summary stats ####
+
+
+
 
 ## Species with data
-sp_withdata <- unique(ala_merged$scientificName)
-length(sp_withdata)
+ala_species
+ala_dat1 <- ala_dat[scientificName %in% afd_species] or synonyms...
+## too simplistic? shoudl we be lookign at other fields as well?
+## download script was set up to download bysearching for text AFD::VALID_NAME (==ALA::scientificName)...
+sp_ala1 <- unique(ala_dat1$scientificName)
+message(cat("Prop of ALA species found in AFD: "),
+        length(sp_ala1)/length(ala_species))
+length(sp_ala1)
+
 
 ## Species without data
-temp <- ala_merged_raw[scientificName %!in% afd_species]
+ala_dat0 <- ala_dat[scientificName %!in% afd_species]
+sp_ala0 <- unique(ala_dat0$scientificName)
+length(sp_ala0)
+message(cat("Prop of ALA species NOT found in AFD: "),
+        length(sp_ala0)/length(ala_species))
+length(sp_ala0)
+
+
+sp_nodat[1:100]
+sp_words <- sapply(strsplit(as.character(sp_nodat), " "), length)
+unique(sp_words)
+## Remove species with one word
+length(sp_nodat[which(sp_words == 1)])
+idx_more1 <- which(sp_words != 1)
+
+sp_nodat[which(sp_words == 0)]
+idx_0 <- which(sp_words = 0)
+length(sp_nodat[which(sp_words == 4)])
+
+sp_nodat[which(sp_words == 4)]
+
+
+length(sp_nodat[which(sp_words == 3)])
+idx_3 <- which(sp_words == 3)
+length(sp_nodat[which(sp_words == 2)])
+idx_2 <- which(sp_words == 2)
+
+
+dim(ala_dat)[1]+dim(ala_nodat)[1]==dim(ala_raw)[1]
+
 sp_nodata <- afd_species %!in% sp_withdata
 length(sp_nodata)
 

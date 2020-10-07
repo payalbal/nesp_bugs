@@ -142,12 +142,21 @@ remove_improper_names <- function(name_vector,
   
   ## [Optional] Remove single word names (likely higher taxa without species suffix)
   if (!allow.higher.taxa){
-    # name_vector[grep(" ", name_vector, fixed = TRUE, invert = TRUE)] <- NA
     ##  set all names witout a space to NA, which should work because we fixed double and trailing space 
+    # name_vector[grep(" ", name_vector, fixed = TRUE, invert = TRUE)] <- NA
     
-    name_vector[which(sapply(strsplit(as.character(name_vector), " "), length) <= 1)] <- NA
+    ## record names with less than or equal to one word
+    sp_incomplete <- name_vector[which(sapply(strsplit(as.character(name_vector), " "), length) <= 1)]
+    
     ##  set names with less than or equal to one word as NA
+    name_vector[which(sapply(strsplit(as.character(name_vector), " "), length) <= 1)] <- NA
   }
+  
+  ## record number of records with less than or equal to one word
+  sp_incomplete_n <- sum(is.na(name_vector))
+  
+  ## Remove NA from list
+  name_vector <- na.omit(name_vector)
   
   # ## [Optional] Remove subspecies and variety suffices
   # if (!allow.subspecies){
@@ -163,17 +172,20 @@ remove_improper_names <- function(name_vector,
     message(cat("Original number of species: "),
             originalN)
     message(cat("Number of species removed: "), 
-              length(improper_species))
+            length(improper_species) + sp_incomplete_n)
     message(cat("Number of species retained: "), 
             length(name_vector))
     message(cat("Proprotion of species removed: "),
-            length(improper_species)/originalN)
-    message(cat("Is #species retained = #species inn raw list - #species removed? : "),
-            length(name_vector) == (length(name_vector_raw) - length(improper_species)))
+            (length(improper_species)+ sp_incomplete_n)/originalN)
+    message(cat("Is #species retained = #species in raw list - #species removed? : "),
+            length(name_vector) == (length(name_vector_raw) - 
+                                      (length(improper_species)+ sp_incomplete_n)))
     
   }else {
     message("No improper species found in checklist")
   }
   
-  return(list(updated_list = name_vector,improper_species = improper_species))
+  return(list(updated_list = name_vector,
+              improper_species = improper_species,
+              incomplete_species = sp_incomplete))
 }

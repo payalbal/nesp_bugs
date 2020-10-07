@@ -125,7 +125,7 @@ all(fields %in% names(f$data)) ## beacuse names are different even if fields cor
 fields[which(fields %!in% names(f$data))]
 
 
-## Check field classes across all downnloads
+## Check field classes across all downloads
 ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
 ala <- names(sort(sapply(ala, file.size)))
 f <- readRDS(ala[1])$data
@@ -139,6 +139,66 @@ for (i in 2:length(ala)) {
           cat("field classes as per specified list = "),
           all(coltypes==f_coltypes))
 }
+
+
+## Merge downloaded data ####
+ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
+
+## Sort files by size
+ala <- names(sort(sapply(ala, file.size), decreasing = TRUE))
+
+## Create data table with Arthropoda dataset (biggest dataset)
+f <- readRDS(ala[1])
+dat_cols <- names(f$data)
+dat_counts <- t(as.data.frame(f$counts))
+dat_counts
+colnames(dat_counts) <- names(f$counts)
+ala_merged <- as.data.table(f$data)
+dim(ala_merged)
+coltypes <- sapply(ala_merged[,..dat_cols], class)
+rm(f)
+
+## Merge all datasets
+for (i in 2:length(ala)) {
+  f <- ala[i]
+  f <- readRDS(f)
+  c <- t(as.data.frame(f$counts))
+  f <- as.data.table(f$data)
+  
+  message(cat("Processing dataset ", i, " :", ala[i], " ..."))
+  
+  dat_counts <- rbind(dat_counts, c)      
+  message(cat("Total number of clean records: "),
+          sum(dat_counts[,4]))
+  
+  message(cat("Matching column classes..."))
+  f_coltypes <- as.character(sapply(f[,..dat_cols], class))
+  f_mismatch <- which(!(coltypes == f_coltypes))
+  for (k in f_mismatch) set(f, j = k, value = eval(parse(text=paste0("as.", coltypes[k], "(f[[k]])"))))
+  
+  f_coltypes <- as.character(sapply(f[,..dat_cols], class))
+  message(cat("Checking columns classes are same... "),
+          all(f_coltypes==coltypes))
+  
+  message(cat("Merging dataset ..."))
+  ala_merged <- rbind(ala_merged, f, use.names = TRUE, fill=TRUE)
+  message(cat("Dimensions of merged data: "),
+          dim(ala_merged)[1])
+  message("\n")
+  rm(c,f) 
+}
+
+
+## Check
+message(cat("#rows in merged data = sum of cleaned records : "),
+        nrow(ala_merged) == sum(dat_counts[,4]))
+
+## Save outputs
+rownames(dat_counts) <- gsub(".rds", "", basename(ala))
+saveRDS(dat_counts, file = file.path(output_dir, "ala_counts.rds"))
+
+saveRDS(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".rds")))
+write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".csv")))
 
 
 
