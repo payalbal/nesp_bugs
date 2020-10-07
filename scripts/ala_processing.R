@@ -64,16 +64,17 @@ for (i in 2:length(ala)) {
           all(f_coltypes==coltypes))
   
   message(cat("Merging dataset ..."))
-  ala_merged <- merge(ala_merged, f, all = TRUE)
+  ala_merged <- rbind(ala_merged, f, use.names = TRUE, fill=TRUE)
   message(cat("Dimensions of merged data: "),
           dim(ala_merged)[1])
   message("\n")
   rm(c,f) 
 }
 
+
 ## Check
 message(cat("#rows in merged data = sum of cleaned records : "),
-        nrows(ala_merged) == sum(dat_counts[,4]))
+        nrow(ala_merged) == sum(dat_counts[,4]))
 
 ## Save outputs
 rownames(dat_counts) <- gsub(".rds", "", basename(ala))
@@ -92,17 +93,33 @@ write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Dat
 #   mutate(names(f_class[j]) = eval(paste0("as.", org_class[j], "(", names(f_class[j]), ")")))names(temp2)[names(temp2) %!in% names(temp)]
 
 
-merge(temp,temp2, by = names(temp))
-## subset to species
+## Subset species as by AFD checklist ####
+ala_merged_raw <- ala_merged <- readRDS(file.path(output_dir, paste0("merged_ala_", Sys.Date(),".rds")))
+length(unique(ala_merged_raw$scientificName))
 
+## Load AFD taxonomic checklist
+afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
+afd_taxon <- unique(afd_taxonomy$PHYLUM)
+afd_species <- unique(afd_taxonomy$VALID_NAME)
+# length(afd_species[grep("(", afd_species, fixed = TRUE)])
+# sp_words <- sapply(strsplit(as.character(afd_species), " "), length)
+# length(afd_species[which(sp_words == 3)])
+
+ala_merged <- ala_merged[scientificName %in% afd_species]
+
+## Species with data
+sp_withdata <- unique(ala_merged$scientificName)
+length(sp_withdata)
+
+## Species without data
+temp <- ala_merged_raw[scientificName %!in% afd_species]
+sp_nodata <- afd_species %!in% sp_withdata
+length(sp_nodata)
 
 ## Mask
 reg.mask.file = file.path(output_dir, "ausmask_WGS.tif")
 
-## Load AFD taxonomic checklist ####
-afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
-afd_taxon <- unique(afd_taxonomy$PHYLUM)
-afd_species <- unique(afd_taxonomy$VALID_NAME)
+
 
 ## duplicates
 # ## Remove duplicates
