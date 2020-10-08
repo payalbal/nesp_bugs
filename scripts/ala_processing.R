@@ -8,7 +8,7 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table", "sp", "raster", "rje", "stringr")
+x <- c("data.table", "rje", "stringr")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -21,8 +21,6 @@ source(file.path(getwd(),"nesp_bugs", "scripts/get_AFDsynonyms.R"))
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 # source(file.path(getwd(), "scripts/remove_improper_names.R"))
 # source(file.path(getwd(), "scripts/get_AFDsynonyms.R"))
-
-ala_dir <- file.path(output_dir, "ala_data")
 
 ## Functions
 '%!in%' <- function(x,y)!('%in%'(x,y))
@@ -154,7 +152,7 @@ message(cat("Synonyms found for genus (only) names for: "),
 message(cat("Synonyms found for species (only) names for: "),
         sum(!is.na(sapply(matches, "[[", 3))), " species")
 
-## Save otputs
+## Save outputs
 y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
 write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
@@ -195,7 +193,7 @@ message(cat("Synonyms found for species (only) names for: "),
         sum(!is.na(sapply(matches, "[[", 3))), " species")
 names(matches[!is.na(sapply(matches, "[[", 3))])
 
-## Save otputs
+## Save outputs
 y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
 write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
@@ -236,7 +234,7 @@ message(cat("Synonyms found for species (only) names for: "),
         sum(!is.na(sapply(matches, "[[", 3))), " species")
 names(matches[!is.na(sapply(matches, "[[", 3))])
 
-## Save otputs
+## Save outputs
 y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
 write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
@@ -251,112 +249,42 @@ dim(ala_dat)
 ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
 dim(ala_dat)
 
+## Save cleaned ALA data
+saveRDS(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".rds")))
+write.csv(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".csv")))
 
-## Summary stats ####
+## Cleaned ALA data summary ####
+message(cat("Number of records in raw ALA data: "),
+        dim(ala_raw)[1])
+message(cat("Number of species in raw ALA data: "),
+        length(unique(ala_raw$scientificName)))
+message(cat("Raw ALA data file:  "),
+        file.path(output_dir, "merged_ala_2020-10-02.rds"))
 
+message(cat("Number of records in cleaned ALA data: "),
+        dim(ala_dat)[1])
+message(cat("Number of species in cleaned ALA data: "),
+        length(unique(ala_dat$scientificName)))
+message(cat("Cleaned ALA data file: "),
+        file.path(output_dir, "clean_ala_2020-10-07.rds"))
 
+message(cat("Proportion of records lost in cleaning ALA data: "),
+        (dim(ala_raw)[1] - dim(ala_dat)[1])/(dim(ala_raw)[1]))
+message(cat("Proportion of species lost in cleaning ALA data: "),
+        (length(unique(ala_raw$scientificName)) - 
+           length(unique(ala_dat$scientificName)))/
+          (length(unique(ala_raw$scientificName))))
 
 
 ## Species with data
-ala_species
-ala_dat1 <- ala_dat[scientificName %in% afd_species] or synonyms...
-## too simplistic? shoudl we be lookign at other fields as well?
-## download script was set up to download bysearching for text AFD::VALID_NAME (==ALA::scientificName)...
-sp_ala1 <- unique(ala_dat1$scientificName)
-message(cat("Prop of ALA species found in AFD: "),
-        length(sp_ala1)/length(ala_species))
-length(sp_ala1)
-
+message(cat("Number of species with data (in ALA): "),
+        length(ala_species))
+message(cat("Proportion of species with data (in ALA): "),
+        length(ala_species)/length(afd_species))
 
 ## Species without data
-ala_dat0 <- ala_dat[scientificName %!in% afd_species]
-sp_ala0 <- unique(ala_dat0$scientificName)
-length(sp_ala0)
-message(cat("Prop of ALA species NOT found in AFD: "),
-        length(sp_ala0)/length(ala_species))
-length(sp_ala0)
+message(cat("Number of species without data (in ALA): "),
+        sum(afd_species %!in% ala_species))
+message(cat("Proportion of species without data (in ALA): "),
+        sum(afd_species %!in% ala_species)/length(afd_species))
 
-
-sp_nodat[1:100]
-sp_words <- sapply(strsplit(as.character(sp_nodat), " "), length)
-unique(sp_words)
-## Remove species with one word
-length(sp_nodat[which(sp_words == 1)])
-idx_more1 <- which(sp_words != 1)
-
-sp_nodat[which(sp_words == 0)]
-idx_0 <- which(sp_words = 0)
-length(sp_nodat[which(sp_words == 4)])
-
-sp_nodat[which(sp_words == 4)]
-
-
-length(sp_nodat[which(sp_words == 3)])
-idx_3 <- which(sp_words == 3)
-length(sp_nodat[which(sp_words == 2)])
-idx_2 <- which(sp_words == 2)
-
-
-dim(ala_dat)[1]+dim(ala_nodat)[1]==dim(ala_raw)[1]
-
-sp_nodata <- afd_species %!in% sp_withdata
-length(sp_nodata)
-
-## Mask
-reg.mask.file = file.path(output_dir, "ausmask_WGS.tif")
-
-
-
-## duplicates
-# ## Remove duplicates
-# if(remove_duplicates == TRUE){
-#   ala_df <- ala_df[!duplicated(ala_df[ , c("longitude", "latitude")]), ]
-# }
-JM...  museum specimens with duplicated lat-long
-
-
-
-## Count files ####
-## Species with data
-sp_data <- list.files(file.path(ala_dir, "maps"), include.dirs = FALSE)
-# list.files(ala_dir, include.dirs = FALSE) ## lists "maps" folder as well
-sp_data <- gsub(".pdf", "", sp_data)
-length(sp_data)
-
-## Species without data
-## No data species txt file
-nodatalog <- file.path(output_dir, "nodataspecies_log.txt")
-writeLines(c("species0"), nodatalog)
-
-sp_nodata <- read.csv(nodatalog)
-sp_nodata <- sp_nodata$species0
-length(sp_nodata)
-
-## Clean by species...
-
-## Get rid of unusable long lat vals
-ala_df <- ala_df[ala_df$longitude > -180 &
-                   ala_df$longitude < 180 &
-                   ala_df$latitude > -90 &
-                   ala_df$latitude < 90, ]
-
-# ## Remove generalised data (as much as possible)
-# if(any(grepl("dataGeneralizations", names(ala_df)))) {
-#   ala_df <- ala_df[ala_df$dataGeneralizationsOriginal == FALSE,]
-# }
-
-# ## Remove duplicates
-# if(remove_duplicates == TRUE){
-#   ala_df <- ala_df[!duplicated(ala_df[ , c("longitude", "latitude")]), ]
-# }
-
-
-
-# for (n in dat_cols) {
-#   class(f[, n]) <- coltypes[n]
-# }
-
-# f[,verbatimEventDate:=NULL]
-# f[,verbatimEventDate:=NULL]
-# 
-# f[,verbatimEventDate := lubridate::as_date(verbatimEventDate)]

@@ -46,16 +46,6 @@ get_ala_taxondata <- function(taxon,
                   "duplicate_record", "duplicate_status",
                   "sensitive","taxonomic_issue")
   
-  ## Data destination directory
-  if(is.null(dst)){
-    stop("Warning: Destination directory for ALA data not specified...\n")
-  } else {
-    if(!dir.exists(dst)){
-      dir.create(dst)
-    } 
-  }
-  
-  
   ## Remove trailing whitespace
   taxon <- stringr::str_squish(taxon)
   
@@ -78,7 +68,17 @@ get_ala_taxondata <- function(taxon,
   
   ## Download records from ALA ####
   if (get_counts_only == FALSE) {
+    
     rm(n.ala)
+    
+    ## Data destination directory
+    if(is.null(dst)){
+      stop("Warning: Destination directory for ALA data not specified...\n")
+    } else {
+      if(!dir.exists(dst)){
+        dir.create(dst)
+      } 
+    }
     
     if (specimens_only == TRUE) {
       
