@@ -27,13 +27,13 @@ source(file.path(getwd(),"nesp_bugs", "scripts/get_AFDsynonyms.R"))
 
 ## Load AFD taxonomic checklist
 afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
-afd_species <- unique(afd_taxonomy$VALID_NAME)
+afd_species <- sort(unique(afd_taxonomy$VALID_NAME))
 message(cat("Number of species in AFD checklist: "),
         length(afd_species))
 
 ## Load ALA data
 ala_raw <- readRDS(file.path(output_dir, "merged_ala_2020-10-02.rds"))
-ala_species <- unique(ala_raw$scientificName)
+ala_species <- sort(unique(ala_raw$scientificName))
 message(cat("Number of unique species in ALA data: "),
         length(ala_species))
 message(cat("NAs in ALA species list: "),
@@ -66,7 +66,7 @@ message(cat("Number of records in raw ALA data: "),
 message(cat("Number of records in cleaned ALA data: "),
         nrow(ala_dat))
 message(cat("Prop of records lost in cleaning ALA data: "),
-        nrow(ala_dat)/nrow(ala_raw))
+        (nrow(ala_raw) - nrow(ala_dat))/nrow(ala_raw))
 message(cat("Proprotion of species removed: "),
         (length(unique(ala_raw$scientificName))-
            length(ala_species))/length(unique(ala_raw$scientificName)))
@@ -75,13 +75,13 @@ message(cat("Proprotion of species removed: "),
 length(ala_species) == length(unique(ala_dat$scientificName))
 rje::is.subset(ala_species, unique(ala_dat$scientificName))
 rje::is.subset(unique(ala_dat$scientificName), ala_species)
-sum(ala_species==unique(ala_dat$scientificName))
+sum(ala_species==sort(unique(ala_dat$scientificName)))
 
 
 ## Identify ALA species not found in AFD checklist ####
 ## ALA scientificName compared against VALID_NAME and SYNONYMS in AFD checklist
 ## Species names categorised by number of words in the name for comparisons  
-ala_species <- unique(ala_dat$scientificName)
+ala_species <- sort(unique(ala_dat$scientificName))
 message(cat("Are all ALA species contained in the AFD checklist: "),
         rje::is.subset(ala_species, afd_species))
 
@@ -128,7 +128,7 @@ ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_species[which(sp_words
 dim(ala_dat)
 
 ## >> ALA species: 4-word names ####
-ala_species <- unique(ala_dat$scientificName)
+ala_species <- sort(unique(ala_dat$scientificName))
 sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
 unique(sp_words)
 
@@ -167,7 +167,7 @@ dim(ala_dat)
 
 
 ## >> ALA species: 3-word names ####
-ala_species <- unique(ala_dat$scientificName)
+ala_species <- sort(unique(ala_dat$scientificName))
 sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
 unique(sp_words)
 
@@ -198,17 +198,27 @@ y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
 write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
 
-## Remove species from dataset: No matches found [check with JM]
-message(cat("Number of records to be removed: "),
+## Record and keep species in dataset: Unmacthed & partially matched species
+message(cat("Number of records to be marked for checking: "),
         length(which(ala_dat$scientificName %in% ala_names)))
 
-dim(ala_dat)
-ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
-dim(ala_dat)
+# dim(ala_dat)
+# ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
+# dim(ala_dat)
+
+ala_dat <- cbind(ala_dat, rep(NA, nrow(ala_dat)))
+names(ala_dat)[ncol(ala_dat)] <- paste0("names", n)
+
+setkey(ala_dat, scientificName)
+ala_dat[ala_names, paste0("names", n) := 1]
+ala_dat[scientificName %!in% ala_names, paste0("names", n) := 0]
+
+## Check
+nrow(ala_dat[names3 == TRUE]) == length(which(ala_dat$scientificName %in% ala_names))
 
 
 ## >> ALA species: 2-word names ####
-ala_species <- unique(ala_dat$scientificName)
+ala_species <- sort(unique(ala_dat$scientificName))
 sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
 unique(sp_words)
 
@@ -239,34 +249,50 @@ y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
 write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
 
-## Remove species from dataset: No matches found [check with JM]
-message(cat("Number of records to be removed: "),
+## Record and keep species in dataset: Unmacthed & partially matched species
+message(cat("Number of records to be marked for checking: "),
         length(which(ala_dat$scientificName %in% ala_names)))
 
+# dim(ala_dat)
+# ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
+# dim(ala_dat)
 
-ala_dat_pre2 <- ala_dat
-dim(ala_dat)
-ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
-dim(ala_dat)
+ala_dat <- cbind(ala_dat, rep(NA, nrow(ala_dat)))
+names(ala_dat)[ncol(ala_dat)] <- paste0("names", n)
 
-## Save cleaned ALA data
+setkey(ala_dat, scientificName)
+ala_dat[ala_names, paste0("names", n) := 1]
+ala_dat[scientificName %!in% ala_names, paste0("names", n) := 0]
+
+## Check
+nrow(ala_dat[names2 == TRUE]) == length(which(ala_dat$scientificName %in% ala_names))
+
+
+## Save cleaned ALA data ####
 saveRDS(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".rds")))
 write.csv(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".csv")))
+
 
 ## Cleaned ALA data summary ####
 message(cat("Number of records in raw ALA data: "),
         dim(ala_raw)[1])
 message(cat("Number of species in raw ALA data: "),
         length(unique(ala_raw$scientificName)))
-message(cat("Raw ALA data file:  "),
-        file.path(output_dir, "merged_ala_2020-10-02.rds"))
+message(cat("Raw ALA data file: \n"),
+        paste0(list.files(output_dir, 
+                          pattern = "merged_ala", 
+                          full.names = TRUE), sep = "\n"))
+
 
 message(cat("Number of records in cleaned ALA data: "),
         dim(ala_dat)[1])
 message(cat("Number of species in cleaned ALA data: "),
         length(unique(ala_dat$scientificName)))
-message(cat("Cleaned ALA data file: "),
-        file.path(output_dir, "clean_ala_2020-10-07.rds"))
+message(cat("Cleaned ALA data file: \n"),
+        paste0(list.files(output_dir, 
+                          pattern = "clean_ala", 
+                          full.names = TRUE), sep = "\n"))
+
 
 message(cat("Proportion of records lost in cleaning ALA data: "),
         (dim(ala_raw)[1] - dim(ala_dat)[1])/(dim(ala_raw)[1]))
@@ -276,15 +302,24 @@ message(cat("Proportion of species lost in cleaning ALA data: "),
           (length(unique(ala_raw$scientificName))))
 
 
-## Species with data
-message(cat("Number of species with data (in ALA): "),
+## Number of species
+ala_species <- sort(unique(ala_dat$scientificName))
+message(cat("Number of species in AFD checklist: "),
+        length(afd_species))
+message(cat("Number of unique species in ALA data: "),
         length(ala_species))
-message(cat("Proportion of species with data (in ALA): "),
-        length(ala_species)/length(afd_species))
+
+
+## Species with data
+message(cat("Number of AFD species found in ALA: "),
+        sum(afd_species %in% ala_species))
+message(cat("Proportion of AFD species found in ALA: "),
+        sum(afd_species %in% ala_species)/length(afd_species))
+
 
 ## Species without data
-message(cat("Number of species without data (in ALA): "),
+message(cat("Number of AFD species not found in ALA: "),
         sum(afd_species %!in% ala_species))
-message(cat("Proportion of species without data (in ALA): "),
+message(cat("Proportion of AFD species not found in ALA: "),
         sum(afd_species %!in% ala_species)/length(afd_species))
 

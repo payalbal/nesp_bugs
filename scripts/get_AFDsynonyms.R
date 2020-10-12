@@ -22,13 +22,13 @@ get_AFDsynonyms <- function(species, checklist) {
     message("Looking for ", i, "in AFD checklist...")
     
     ## Look for entire name in synonyms
-    z <- checklist[grep(i, checklist$SYNONYMS)]
-    if(nrow(z)==0){
+    z <- checklist[grep(i, checklist$SYNONYMS)]$SYNONYMS
+    if(length(z)==0){
       message("Not found in AFD checklist")
       fullname_synonyms <- NA
     } else{
       message("****** Full name found in AFD checklist *******")
-      fullname_synonyms <- checklist[grep(i, checklist$SYNONYMS)]$SYNONYMS
+      fullname_synonyms <- paste(z, sep="", collapse="; ")
     }
     
     ## Look at synonyms for genus only
