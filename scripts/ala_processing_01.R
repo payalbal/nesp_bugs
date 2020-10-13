@@ -1,4 +1,4 @@
-## Clean downloaded ALA data and save by species
+## Clean downloaded ALA data and summarise
 ## Notes: Each occurrence record has a record id, we can use `occurrence_details` to get additional information if you need something extra later
 
 
@@ -107,6 +107,10 @@ ala_dat[grep("Metapenaeus ensis", ala_dat$scientificName)]$scientificName
 
 ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]$scientificName
 
+# temp <- ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]
+# write.csv(temp, file.path(output_dir, "names5_records.csv"))
+# rm(temp)
+
 ## Check for species manually in AFD
 grep("Metapenaeus endeavouri", afd_species)
 afd_taxonomy[VALID_NAME == "Metapenaeus endeavouri"]$SYNONYMS
@@ -139,6 +143,9 @@ message(cat("Number of species not found in AFD: "),
         sum(ala_species[which(sp_words == n)] %!in% afd_species))
 ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
 
+temp <- ala_dat[scientificName %in% ala_names]
+write.csv(temp, file.path(output_dir, "names4_records.csv"))
+rm(temp)
 
 ## Checking for species manually
 matches <- get_AFDsynonyms(ala_names, afd_taxonomy)
