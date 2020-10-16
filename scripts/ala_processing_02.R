@@ -148,6 +148,28 @@ message(cat("Proprotion of species removed: "),
         (62539 - length(ala_species)) / 62539)
 
 
+## Get rid of unusable long lat vals ####
+message(cat("Number of records with unusable lat-long:"),
+        nrow(ala_dat[longitude < -180 |
+                       longitude > 180 |
+                       latitude < -90 |
+                       latitude > 90, ]))
+
+
+ala_dat <- ala_dat[longitude >= -180 &
+                     longitude <= 180 &
+                     latitude >= -90 &
+                     latitude <= 90, ]
+
+## Checks
+range(ala_dat$latitude)
+range(ala_dat$longitude)
+length(ala_dat[longitude < -180]$longitude)
+length(ala_dat[longitude > 180]$longitude)
+length(ala_dat[latitude < -90]$latitude)
+length(ala_dat[latitude > 90]$latitude)
+
+
 ## Identify ALA species not found in AFD checklist ####
 ## ALA scientificName compared against VALID_NAME and SYNONYMS in AFD checklist
 ## Species names categorised by number of words in the name for comparisons  
@@ -155,51 +177,6 @@ ala_species <- sort(unique(ala_dat$scientificName))
 message(cat("Are all ALA species contained in the AFD checklist: "),
         rje::is.subset(ala_species, afd_species))
 
-# ## >> ALA species: 5-word names ####
-# sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
-# unique(sp_words)
-# 
-# n = 5
-# 
-# length(ala_species[which(sp_words == n)])
-# message(cat("Species found in AFD: "),
-#         ala_species[which(sp_words == n)] %in% afd_species)
-# ala_species[which(sp_words == n)]
-# 
-# ## Check for species manually in ALA
-# grep("Metapenaeus endeavouri", ala_species)
-# ala_species[grep("Metapenaeus endeavouri", ala_species)]
-# ala_dat[grep("Metapenaeus endeavouri", ala_dat$scientificName)]$scientificName
-# 
-# grep("Metapenaeus ensis", ala_species)
-# ala_species[grep("Metapenaeus ensis", ala_species)]
-# ala_dat[grep("Metapenaeus ensis", ala_dat$scientificName)]$scientificName
-# 
-# ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]$scientificName
-# 
-# # temp <- ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]
-# # write.csv(temp, file.path(output_dir, "names5_records.csv"))
-# # rm(temp)
-# 
-# ## Check for species manually in AFD
-# grep("Metapenaeus endeavouri", afd_species)
-# afd_taxonomy[VALID_NAME == "Metapenaeus endeavouri"]$SYNONYMS
-# grep("Penaeopsis endeavouri", afd_taxonomy$VALID_NAME)
-# grep("Penaeopsis endeavouri", afd_taxonomy$COMPLETE_NAME)
-# 
-# grep("Metapenaeus ensis", afd_species)
-# afd_taxonomy[VALID_NAME == "Metapenaeus ensis"]$SYNONYMS
-# grep("Penaeus ensis", afd_taxonomy$VALID_NAME)
-# grep("Metapenaeus philippinensis", afd_taxonomy$VALID_NAME)
-# grep("Penaeus incisipes", afd_taxonomy$VALID_NAME)
-# grep("Penaeus mastersii", afd_taxonomy$VALID_NAME)
-# 
-# ## Remove species from dataset: No matches found [check with JM]
-# message(cat("Number of records to be removed: "),
-#         nrow(ala_dat[which(ala_dat$scientificName %in% ala_species[which(sp_words == n)]),]))
-# dim(ala_dat)
-# ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_species[which(sp_words == n)]),]
-# dim(ala_dat)
 
 ## >> ALA species: 4-word names ####
 ala_species <- sort(unique(ala_dat$scientificName))
@@ -317,8 +294,6 @@ ala_dat[scientificName %!in% names3_in, paste0("names", n) := 0]
 ## Checks
 length(names3_in) == sum(sort(unique(ala_dat[names3_in]$scientificName)) == sort(names3_in))
 nrow(ala_dat[names3 == TRUE]) == length(which(ala_dat$scientificName %in% names3_in))
-
-saveRDS(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".rds")))
 
 
 ## >> ALA species: 2-word names ####
