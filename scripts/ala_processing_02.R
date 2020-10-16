@@ -16,11 +16,13 @@ rm(x)
 output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 source(file.path(getwd(),"nesp_bugs", "scripts/remove_improper_names.R"))
 source(file.path(getwd(),"nesp_bugs", "scripts/get_AFDsynonyms.R"))
+source(file.path(getwd(),"nesp_bugs", "scripts/get_source.R"))
 
 # ## Local paths
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 # source(file.path(getwd(), "scripts/remove_improper_names.R"))
 # source(file.path(getwd(), "scripts/get_AFDsynonyms.R"))
+# source(file.path(getwd(), "scripts/get_source.R"))
 
 ## Functions
 '%!in%' <- function(x,y)!('%in%'(x,y))
@@ -40,8 +42,9 @@ message(cat("NAs in ALA species list: "),
         sum(is.na(ala_species)))
 
 
+
 ## ALA data cleaning ####
-## >> Find improper & incomplete names in ALA data ####
+## Find improper & incomplete names in ALA data ####
 species_record <- remove_improper_names(as.character(ala_species),
                                         allow.higher.taxa = FALSE,
                                         allow.subspecies = TRUE)
@@ -56,11 +59,14 @@ message(cat("NAs in cleaned ALA species list: "),
 message(cat("Duplicates in cleaned ALA species list: "),
         length(species_record$updated_list[duplicated(species_record$updated_list)]))
 
+saveRDS(species_record, file = file.path(output_dir, "improper_names.rds"))
 
-## >> Remove improper & incomplete names from ALA data ####
+## Remove improper & incomplete names from ALA data ####
 ala_species <- as.character(na.omit(species_record$updated_list))
 ala_dat <- ala_raw[which(ala_raw$scientificName %in% ala_species),]
 
+message(cat("Number of unique species in ALA data: "),
+        length(ala_species))
 message(cat("Number of records in raw ALA data: "),
         nrow(ala_raw))
 message(cat("Number of records in cleaned ALA data: "),
@@ -78,6 +84,70 @@ rje::is.subset(unique(ala_dat$scientificName), ala_species)
 sum(ala_species==sort(unique(ala_dat$scientificName)))
 
 
+## Find NZ and marine species in ALA ####
+ala_species_all <- ala_species <- sort(unique(ala_dat$scientificName))
+
+# matched_data <- suppressWarnings(get_source(ala_species))
+# saveRDS(matched_data, file = file.path(output_dir, "matched_data.rds"))
+matched_data <- readRDS(file.path(output_dir, "matched_data.rds"))
+
+## >> Idenitfy source of species name as recorded in ALA database ####
+unique(matched_data[,name_source])
+matched_data[,.N, by = name_source]
+matched_data[name_source == "APC"]$sp_names ## list APC species
+matched_data[name_source == "CoL"]$sp_names ## list CoL species
+
+## Remove species 
+sources <- as.data.table(read.csv(file.path(output_dir, "name_source.csv")))
+message(cat("Excluding name sources: \n"),
+        paste0(sources[exclude == 1]$name_source, sep = "\n"))
+
+sources <- sources[exclude == 1]$name_source
+message(cat("Number of species removed: "),
+        nrow(matched_data[name_source %in% sources]))
+message(cat("Number of species retained: "),
+        nrow(matched_data[name_source %!in% sources]))
+
+ala_species <- matched_data[name_source %!in% sources]$sp_names
+
+## Checks
+length(ala_species)
+sum(sort(ala_species_all[ala_species_all %!in% ala_species]) == sort(matched_data[name_source %in% sources]$sp_names))
+
+
+## >> Identify (marine) habitat for species as listed in CAAB: http://www.cmar.csiro.au/caab/ ####
+unique(matched_data[,caab_habitat]) 
+matched_data[,.N, by = caab_habitat]
+
+## Remove species 
+marine <- as.data.table(read.csv(file.path(output_dir, "caab_habitat.csv")))
+message(cat("Excluding name sources: \n"),
+        paste0(marine[exclude == 1]$caab_habitat, sep = "\n"))
+
+marine <- marine[exclude == 1]$caab_habitat
+message(cat("Number of species removed: "),
+        nrow(matched_data[caab_habitat %in% marine]))
+message(cat("Number of species retained: "),
+        nrow(matched_data[caab_habitat %!in% marine]))
+
+ala_species <- matched_data[caab_habitat %!in% marine]$sp_names
+
+
+## Remove NZ and marine species from ALA data ####
+ala_species <- sort(ala_species)
+message(cat("Number of unique species retained: "),
+        length(ala_species))
+
+ala_dat <- ala_raw[which(ala_raw$scientificName %in% ala_species),]
+message(cat("Number of records in updated ALA data: "),
+        nrow(ala_dat))
+
+message(cat("Prop of records lost: "),
+        (1949710 - nrow(ala_dat)) / 1949710)
+message(cat("Proprotion of species removed: "),
+        (62539 - length(ala_species)) / 62539)
+
+
 ## Identify ALA species not found in AFD checklist ####
 ## ALA scientificName compared against VALID_NAME and SYNONYMS in AFD checklist
 ## Species names categorised by number of words in the name for comparisons  
@@ -85,51 +155,51 @@ ala_species <- sort(unique(ala_dat$scientificName))
 message(cat("Are all ALA species contained in the AFD checklist: "),
         rje::is.subset(ala_species, afd_species))
 
-## >> ALA species: 5-word names ####
-sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
-unique(sp_words)
-
-n = 5
-
-length(ala_species[which(sp_words == n)])
-message(cat("Species found in AFD: "),
-        ala_species[which(sp_words == n)] %in% afd_species)
-ala_species[which(sp_words == n)]
-
-## Check for species manually in ALA
-grep("Metapenaeus endeavouri", ala_species)
-ala_species[grep("Metapenaeus endeavouri", ala_species)]
-ala_dat[grep("Metapenaeus endeavouri", ala_dat$scientificName)]$scientificName
-
-grep("Metapenaeus ensis", ala_species)
-ala_species[grep("Metapenaeus ensis", ala_species)]
-ala_dat[grep("Metapenaeus ensis", ala_dat$scientificName)]$scientificName
-
-ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]$scientificName
-
-# temp <- ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]
-# write.csv(temp, file.path(output_dir, "names5_records.csv"))
-# rm(temp)
-
-## Check for species manually in AFD
-grep("Metapenaeus endeavouri", afd_species)
-afd_taxonomy[VALID_NAME == "Metapenaeus endeavouri"]$SYNONYMS
-grep("Penaeopsis endeavouri", afd_taxonomy$VALID_NAME)
-grep("Penaeopsis endeavouri", afd_taxonomy$COMPLETE_NAME)
-
-grep("Metapenaeus ensis", afd_species)
-afd_taxonomy[VALID_NAME == "Metapenaeus ensis"]$SYNONYMS
-grep("Penaeus ensis", afd_taxonomy$VALID_NAME)
-grep("Metapenaeus philippinensis", afd_taxonomy$VALID_NAME)
-grep("Penaeus incisipes", afd_taxonomy$VALID_NAME)
-grep("Penaeus mastersii", afd_taxonomy$VALID_NAME)
-
-## Remove species from dataset: No matches found [check with JM]
-message(cat("Number of records to be removed: "),
-        nrow(ala_dat[which(ala_dat$scientificName %in% ala_species[which(sp_words == n)]),]))
-dim(ala_dat)
-ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_species[which(sp_words == n)]),]
-dim(ala_dat)
+# ## >> ALA species: 5-word names ####
+# sp_words <- sapply(strsplit(as.character(ala_species), " "), length)
+# unique(sp_words)
+# 
+# n = 5
+# 
+# length(ala_species[which(sp_words == n)])
+# message(cat("Species found in AFD: "),
+#         ala_species[which(sp_words == n)] %in% afd_species)
+# ala_species[which(sp_words == n)]
+# 
+# ## Check for species manually in ALA
+# grep("Metapenaeus endeavouri", ala_species)
+# ala_species[grep("Metapenaeus endeavouri", ala_species)]
+# ala_dat[grep("Metapenaeus endeavouri", ala_dat$scientificName)]$scientificName
+# 
+# grep("Metapenaeus ensis", ala_species)
+# ala_species[grep("Metapenaeus ensis", ala_species)]
+# ala_dat[grep("Metapenaeus ensis", ala_dat$scientificName)]$scientificName
+# 
+# ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]$scientificName
+# 
+# # temp <- ala_dat[grep("Metapenaeus endeavouri & Metapenaeus ensis", ala_dat$scientificName)]
+# # write.csv(temp, file.path(output_dir, "names5_records.csv"))
+# # rm(temp)
+# 
+# ## Check for species manually in AFD
+# grep("Metapenaeus endeavouri", afd_species)
+# afd_taxonomy[VALID_NAME == "Metapenaeus endeavouri"]$SYNONYMS
+# grep("Penaeopsis endeavouri", afd_taxonomy$VALID_NAME)
+# grep("Penaeopsis endeavouri", afd_taxonomy$COMPLETE_NAME)
+# 
+# grep("Metapenaeus ensis", afd_species)
+# afd_taxonomy[VALID_NAME == "Metapenaeus ensis"]$SYNONYMS
+# grep("Penaeus ensis", afd_taxonomy$VALID_NAME)
+# grep("Metapenaeus philippinensis", afd_taxonomy$VALID_NAME)
+# grep("Penaeus incisipes", afd_taxonomy$VALID_NAME)
+# grep("Penaeus mastersii", afd_taxonomy$VALID_NAME)
+# 
+# ## Remove species from dataset: No matches found [check with JM]
+# message(cat("Number of records to be removed: "),
+#         nrow(ala_dat[which(ala_dat$scientificName %in% ala_species[which(sp_words == n)]),]))
+# dim(ala_dat)
+# ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_species[which(sp_words == n)]),]
+# dim(ala_dat)
 
 ## >> ALA species: 4-word names ####
 ala_species <- sort(unique(ala_dat$scientificName))
@@ -162,12 +232,15 @@ message(cat("Synonyms found for species (only) names for: "),
 ## Save outputs
 y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
-write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
+write.csv(y, file.path(output_dir, paste0("names", n, ".csv")), row.names = FALSE)
 
-## Remove species from dataset: No matches found [check with JM]
+## Remove or mark unmatched and partially matched species from dataset
+## Species list reviewed by JM: see names2_JRM.csv
+## all species were found to either be marine or from NZ
 message(cat("Number of records to be removed: "),
         length(which(ala_dat$scientificName %in% ala_names)))
 
+## Remove records
 dim(ala_dat)
 ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
 dim(ala_dat)
@@ -181,9 +254,12 @@ unique(sp_words)
 n = 3
 
 length(ala_species[which(sp_words == n)])
+ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+
 message(cat("Number of species not found in AFD: "),
         sum(ala_species[which(sp_words == n)] %!in% afd_species))
-ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+message(cat("Number of ALA records associated with species found: "),
+        length(which(ala_dat$scientificName %in% ala_names)))
 
 ## Checking for species manually
 matches <- get_AFDsynonyms(ala_names, afd_taxonomy)
@@ -203,25 +279,46 @@ names(matches[!is.na(sapply(matches, "[[", 3))])
 ## Save outputs
 y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
-write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
+write.csv(y, file.path(output_dir, paste0("names", n, ".csv")), row.names = FALSE)
 
-## Record and keep species in dataset: Unmacthed & partially matched species
+## Remove or mark unmatched and partially matched species from dataset
+## Species list reviewed by JM: see names3_JRM.csv
+## marine, NZ or exotic species idenntified were removed
+ala_names <- fread(file.path(output_dir, paste0("names", n, "_JRM.csv")))
+names3_out <- ala_names[exclude == 1]$ala_names
+names3_in <- ala_names[exclude == 0]$ala_names
+
+message(cat("Total number of species checked: "),
+        length(ala_names))
+
+message(cat("Number of species to be removed: "),
+        length(names3_out))
+message(cat("Number of records to be removed: "),
+        length(which(ala_dat$scientificName %in% names3_out)))
+
+message(cat("Number of species to be marked: "),
+        length(names3_in))
 message(cat("Number of records to be marked for checking: "),
-        length(which(ala_dat$scientificName %in% ala_names)))
+        length(which(ala_dat$scientificName %in% names3_in)))
 
-# dim(ala_dat)
-# ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
-# dim(ala_dat)
+## Remove records
+dim(ala_dat)
+ala_dat <- ala_dat[which(ala_dat$scientificName %!in% names3_out),]
+dim(ala_dat)
 
+## Mark records
 ala_dat <- cbind(ala_dat, rep(NA, nrow(ala_dat)))
 names(ala_dat)[ncol(ala_dat)] <- paste0("names", n)
 
 setkey(ala_dat, scientificName)
-ala_dat[ala_names, paste0("names", n) := 1]
-ala_dat[scientificName %!in% ala_names, paste0("names", n) := 0]
+ala_dat[names3_in, paste0("names", n) := 1]
+ala_dat[scientificName %!in% names3_in, paste0("names", n) := 0]
 
-## Check
-nrow(ala_dat[names3 == TRUE]) == length(which(ala_dat$scientificName %in% ala_names))
+## Checks
+length(names3_in) == sum(sort(unique(ala_dat[names3_in]$scientificName)) == sort(names3_in))
+nrow(ala_dat[names3 == TRUE]) == length(which(ala_dat$scientificName %in% names3_in))
+
+saveRDS(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".rds")))
 
 
 ## >> ALA species: 2-word names ####
@@ -232,9 +329,12 @@ unique(sp_words)
 n = 2
 
 length(ala_species[which(sp_words == n)])
+ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+
 message(cat("Number of species not found in AFD: "),
         sum(ala_species[which(sp_words == n)] %!in% afd_species))
-ala_names <- sort(ala_species[which(sp_words == n)][ala_species[which(sp_words == n)] %!in% afd_species])
+message(cat("Number of ALA records associated with species found: "),
+        length(which(ala_dat$scientificName %in% ala_names)))
 
 ## Checking for species manually
 matches <- get_AFDsynonyms(ala_names, afd_taxonomy)
@@ -254,15 +354,11 @@ names(matches[!is.na(sapply(matches, "[[", 3))])
 ## Save outputs
 y <- rbindlist(matches, fill=FALSE)
 y <- cbind(ala_names, y)
-write.csv(y, file.path(output_dir, paste0("names", n, ".csv")))
+write.csv(y, file.path(output_dir, paste0("names", n, ".csv")), row.names = FALSE)
 
 ## Record and keep species in dataset: Unmacthed & partially matched species
 message(cat("Number of records to be marked for checking: "),
         length(which(ala_dat$scientificName %in% ala_names)))
-
-# dim(ala_dat)
-# ala_dat <- ala_dat[which(ala_dat$scientificName %!in% ala_names),]
-# dim(ala_dat)
 
 ala_dat <- cbind(ala_dat, rep(NA, nrow(ala_dat)))
 names(ala_dat)[ncol(ala_dat)] <- paste0("names", n)
