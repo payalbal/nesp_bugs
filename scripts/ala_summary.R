@@ -118,6 +118,12 @@ nrow(count1) + nrow(countLTE20) + nrow(countMT20) == length(afd_species)
 ## because we have additional species in ALA compared to AFD checklist
 ## see names3.csv and names2.csv
 
+## List for DAWE
+## List of 98904 species from the cleaned ALA data that have 0 or less than 20 records
+tab1 <- data.table(scientificName = count0)
+tab1[,N := rep(0, length(count0))]
+tab1 <- rbind(tab1, count1, countLTE20[order(countLTE20$N), ])
+write.csv(tab1, file = file.path(output_dir, "ALAsp_sparsedata.csv"), row.names = FALSE)
 
 ## ALA species by year
 age <- ala_dat[,.N, by = as.numeric(format(ala_dat$eventDate,'%Y'))]
@@ -184,3 +190,85 @@ message(cat("Number of species with more than 20 specimen records in ALA db: "),
         nrow(typecounts[specimen > 20]))
 
 
+## Explore data issues ####
+## >> Load list of data issues
+qa <- as.data.frame(read.csv(file.path(output_dir, "qa_assertions.csv")))
+
+## >> Check for unusable long lat vals #### 
+message(cat("Number of records with unusable lat-long:"),
+        nrow(ala_dat[longitude < -180 |
+                       longitude > 180 |
+                       latitude < -90 |
+                       latitude > 90, ]))
+
+## >> Check for records with geospatial issues ####
+x <- grep("geo|Geo" , qa$name, value = TRUE)
+for(i in x){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+
+
+## >> Check for records without date ####
+message(cat("Number of records whtout date: "),
+        sum(is.na(ala_dat$eventDate)))
+x <- grep("date|Date" , qa$name, value = TRUE)
+for(i in x){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+
+
+## >> Sensitive species ####
+## TO BE RESOLVED LATER BY SPECIES
+grep("General|sensitive", names(ala_dat), value = TRUE)
+
+ala_dat[,.N,by = sensitive]
+
+unique(ala_dat$dataAreGeneralised)
+sum(ala_dat$dataAreGeneralised)
+ala_dat[,.N,by = dataAreGeneralised]
+
+unique(ala_dat$dataGeneralizationsOriginal)
+ala_dat[,.N,by = dataGeneralizationsOriginal]
+sum(grepl("Coordinate precision generalised", ala_dat$dataGeneralizationsOriginal))
+
+# ## Remove generalised data (as much as possible)/Sensitive
+# if(any(grepl("dataGeneralizations", names(ala_df)))) {
+#   ala_df <- ala_df[ala_df$dataGeneralizationsOriginal == FALSE,]
+# }
+
+## >> Summary of by QA assertions ####
+## Issues as commented by JM
+exclude <- qa[which(qa$exclude == 1),]$name
+for(i in exclude){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+
+keep <- qa[which(qa$keep == 1),]$name
+for(i in keep){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+
+drop_qa <- qa[which(qa$not_relevant == 1),]$name
+for(i in drop_qa){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+
+## List all issues with corresponding number of records
+x <- qa$name
+for(i in x){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+
+## Only list issues with > 0 records associated
+for(i in x){
+  if(eval(parse(text = paste0("sum(ala_dat$", i, ")"))) > 0){
+    message(cat(paste0("Number of records with issue - ", i, ": ")),
+            eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+  }
+}

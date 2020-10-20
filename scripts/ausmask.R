@@ -8,7 +8,7 @@ gc()
 
 devtools::install_github('smwindecker/gdaltools', force = TRUE)
 
-x <- c("sp", "raster", "gdaltools", "rgdal", "gdalUtils")
+x <- c("sp", "raster", "gdaltools", "rgdal", "gdalUtils", "rnaturalearth", "rnaturalearthhires", "devtools", "usethis")
 lapply(x, require, character.only = TRUE)
 
 
@@ -23,8 +23,6 @@ bugs_data = file.path(getwd(), "nesp_bugs", "nesp_bugs_data")
 # install.packages("rnaturalearthhires", repos = "http://packages.ropensci.org", type = "binary")
 # devtools::install_github('skiptoniam/sense')
 source("/Users/payalb/Dropbox/Projects/discovery_trade/analyses/regSSP_fraclu/scripts/gdal_raster_functions.R")
-x <- c("sp", "rgeos","rnaturalearth", "rnaturalearthhires", "devtools", "usethis")
-lapply(x, require, character.only = TRUE)
 
 
 ## Temp mask using rnaturaleath package ####
