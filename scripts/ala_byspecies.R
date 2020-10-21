@@ -156,6 +156,12 @@ for (i in ala_species){
   plot(reg.mask, col = "grey", axes = FALSE, box = FALSE, legend = FALSE)
   points(temp[,.(longitude, latitude)], pch = 4, col = "blue", cex = 0.5)
   
+  # ## Example
+  # plot(ausmask)
+  # lat <- ala_dat[scientificName == "Inquisitor flindersianus"]$latitude
+  # long <- ala_dat[scientificName == "Inquisitor flindersianus"]$longitude
+  # points(long, lat)
+  
   dev.off()
 }
 
@@ -179,24 +185,3 @@ unique(ala_dat$duplicateStatus) ## https://github.com/AtlasOfLivingAustralia/ala
 ala_dat[,.N,by = duplicateStatus]
 
 
-
-## NEXT SCRIPT
-## For indiovial species
-## Mask including islands and offshore territories + buffer
-## Species habitat polygons
-## Species distribution (wide/restricted)
-## Prelim analysis area (in/out; prop of habitat within)
-## Fire extent (yes/no; prop of habitat impacted)
-
-
-## For all species
-## Think or resolution of analyses. 
-## Stacked polygons or points per grid?
-
-
-
-# ## Example
-# plot(ausmask)
-# lat <- ala_dat[scientificName == "Inquisitor flindersianus"]$latitude
-# long <- ala_dat[scientificName == "Inquisitor flindersianus"]$longitude
-# points(long, lat)
