@@ -3,16 +3,19 @@ NESP invetebrate project titled 'Fire-affected invertebrates: Priority species a
 
 [---Under dev---]
 
-## Contact author
-payal.bal@unimelb.edu.au
+## Webpage
+
 
 ## Team
-John Woinarski, CDU
-Jess Marsh, CDU
-Payal Bal, UoM
+John Woinarski, CDU <br>
+Jess Marsh, CDU <br>
+Payal Bal, UoM <br>
 
 ## Collaborators
 ...
+
+#### Contact author
+payal.bal@unimelb.edu.au
 
 ## Biodiversity data sources
 ALA: https://www.ala.org.au/
