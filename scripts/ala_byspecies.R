@@ -15,7 +15,7 @@ rm(x)
 output_dir = file.path(getwd(), "nesp_bugs", "outputs")
 data_dir = file.path(output_dir, "ala_data" ,"spdata")
 dir.create(data_dir)
-map_dir = file.path(data_dir, "spmaps")
+map_dir = file.path(data_dir, "spmaps_unmasked")
 dir.create(map_dir)
 
 # ## Local paths
@@ -32,7 +32,7 @@ dir.create(map_dir)
 ala_dat <- list.files(output_dir, 
                       pattern = "clean_ala*.*.rds$", 
                       full.names = TRUE)
-ala_dat_all <- ala_dat <- readRDS(ala_dat)
+ala_dat <- readRDS(ala_dat)
 message(cat("Number of records in data: "),
         nrow(ala_dat))
 
@@ -48,11 +48,13 @@ for(i in x){
   }
 }
 
-dim(ala_dat)
+message("Columns being dropped:")
+drop_cols
 message(cat("Number of columns being dropped: "),
         length(drop_cols))
 ala_dat[, (drop_cols) := NULL]
-dim(ala_dat)
+message(cat("Number of columns in data: "),
+        dim(ala_dat)[2])
 
 
 ## Drop records with issues ####
@@ -101,7 +103,7 @@ mask.file = file.path(output_dir, "ausmask_WGS.tif")
 # writeRaster(aus.mask, 
 #             file = file.path(output_dir, "ausmask_WGS10.tif"), format = "GTiff")
 
-## Find fields to use for identifyign duplicates & check for NAs
+## Display fields used to identify duplicates & check for NAs within
 grep("ID|id", names(ala_dat), value = TRUE)
 grep("catalogue", names(ala_dat), value = TRUE)
 sum(is.na(ala_dat$collectionID)) ## https://dwc.tdwg.org/list/#dwc_collectionID
@@ -135,9 +137,6 @@ for (i in ala_species){
   ## Tabulate number of records lost
   n <- rbind(n, c(n1, n2, n1-n2))
   
-  
-  ## Mask + buffer (?) .. Look up 
-  
   ## Create file name
   spname <- paste0(word(i,1), "00xx00", word(i,-1))
   spname <- str_replace_all(spname, "[^[:alnum:]]", "")
@@ -160,30 +159,40 @@ for (i in ala_species){
   dev.off()
 }
 
+## Save number of duplicated records lost for each species
 names(n) <- c("org", "final", "duplicates")
 rownames(n) <- ala_species
 
-
-range(n$duplicates)
-plost <- n$duplicates/n$org
-range(plost)
-
-
+# ## Explore nnumber of duplicate records lost
+# range(n$duplicates)
+# plost <- n$duplicates/n$org
+# range(plost)
 
 saveRDS(n, file = file.path(output_dir, "duplicate_counts.rds"))
 write.csv(n, file = file.path(output_dir, "duplicate_counts.csv"))
 
 
 ## Check 'duplicateStatus' fields
-
+## This field is not used to subset data
 grep("dup", names(ala_dat), value = TRUE)
 unique(ala_dat$duplicateStatus) ## https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/duplicate_status
 ala_dat[,.N,by = duplicateStatus]
 
-## Fire extent..next script
 
 
+## NEXT SCRIPT
+## For indiovial species
 ## Mask including islands and offshore territories + buffer
+## Species habitat polygons
+## Species distribution (wide/restricted)
+## Prelim analysis area (in/out; prop of habitat within)
+## Fire extent (yes/no; prop of habitat impacted)
+
+
+## For all species
+## Think or resolution of analyses. 
+## Stacked polygons or points per grid?
+
 
 
 # ## Example
