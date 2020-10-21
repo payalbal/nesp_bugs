@@ -13,11 +13,11 @@ lapply(x, require, character.only = TRUE)
 
 
 ## Server paths
-output_dir = file.path(getwd(), "nesp_bugs", "outputs")
+output_dir = file.path(getwd(), "nesp_bugs", "outputs", "masks")
 bugs_data = file.path(getwd(), "nesp_bugs", "nesp_bugs_data")
 
 # ## Local paths
-# output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
+# output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs/masks"
 # bugs_data = "/Volumes/uom_data/nesp_bugs_data"
 
 # install.packages("rnaturalearthhires", repos = "http://packages.ropensci.org", type = "binary")
@@ -54,27 +54,96 @@ writeRaster(aus.mask.wgs, "./output/ausmask_WGS.tif", format = "GTiff")
 # aus_geodata_poly <- sf::st_read(file.path(bugs_data, "env_data/GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
 aus_geodata <- rgdal::readOGR(file.path(bugs_data, "env_data/GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
 unique(aus_geodata$FEAT_CODE)
-aus_mainland <- aus_geodata[aus_geodata$FEAT_CODE == "mainland",]
-# aus_island <- aus_geodata[aus_geodata$FEAT_CODE == "island",]
 
 ## Convert to raster
-temp <- rgeos::gUnionCascaded(aus_mainland)
-shapefile(x = temp, file = file.path(output_dir, "aus_mainland.shp"))
+aus_all <- rgeos::gUnionCascaded(aus_geodata)
+shapefile(x = aus_geodata, file = file.path(output_dir, "aus_all.shp"))
+ausmask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
+infile <- file.path(output_dir, "aus_all.shp")
+outfile <- file.path(output_dir, "aus_all.tif")
+rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(aus_geodata)[c(1,2,3,4)])
 
+## Reproject to WGS84
+infile <- outfile
+outfile <- file.path(output_dir, "aus_all_WGS.tif")
+source_crs <- crs(raster(infile))
+new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+new_res <- res(ausmask)
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
+
+plot(raster(outfile))
+unique(raster(outfile)[])
+
+
+## Mainland only mask ####
+aus_mainland <- aus_geodata[aus_geodata$FEAT_CODE == "mainland",]
+
+## Convert to raster
+aus_mainland <- rgeos::gUnionCascaded(aus_mainland)
+shapefile(x = aus_mainland, file = file.path(output_dir, "aus_mainland.shp"))
 ausmask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
 infile <- file.path(output_dir, "aus_mainland.shp")
 outfile <- file.path(output_dir, "aus_mainland.tif")
-
-rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(ausmask)[c(1,2,3,4)])
+rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(aus_geodata)[c(1,2,3,4)])
 
 ## Reproject to WGS84
 infile <- outfile
 outfile <- file.path(output_dir, "aus_mainland_WGS.tif")
+source_crs <- crs(raster(infile))
+new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+new_res <- res(ausmask)
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
+
+plot(raster(outfile))
+unique(raster(outfile)[])
+
+
+## Island only mask ####
+aus_island <- aus_geodata[aus_geodata$FEAT_CODE == "island",]
+
+## Convert to raster
+aus_island <- rgeos::gUnionCascaded(aus_island)
+shapefile(x = aus_island, file = file.path(output_dir, "aus_island.shp"))
+ausmask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
+infile <- file.path(output_dir, "aus_island.shp")
+outfile <- file.path(output_dir, "aus_island.tif")
+rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(aus_geodata)[c(1,2,3,4)])
+
+## Reproject to WGS84
+infile <- outfile
+outfile <- file.path(output_dir, "aus_island_WGS.tif")
+source_crs <- crs(raster(infile))
+new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+new_res <- res(ausmask)
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
+
+plot(raster(outfile))
+unique(raster(outfile)[])
+
+
+## Sea only mask ####
+aus_sea <- aus_geodata[aus_geodata$FEAT_CODE == "sea",]
+
+## Convert to raster
+aus_sea <- rgeos::gUnionCascaded(aus_sea)
+shapefile(x = aus_sea, file = file.path(output_dir, "aus_sea.shp"))
+ausmask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
+infile <- file.path(output_dir, "aus_sea.shp")
+outfile <- file.path(output_dir, "aus_sea.tif")
+rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(aus_geodata)[c(1,2,3,4)])
+
+## Reproject to WGS84
+infile <- outfile
+outfile <- file.path(output_dir, "aus_sea_WGS.tif")
 
 source_crs <- crs(raster(infile))
 new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 new_res <- res(ausmask)
 gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
+
+plot(raster(outfile))
+
+
 
 ## OTHER
 ## Mask using GADM ####

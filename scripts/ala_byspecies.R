@@ -22,7 +22,7 @@ dir.create(map_dir)
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 # data_dir = file.path(output_dir,  "ala_data" ,"spdata")
 # dir.create(data_dir)
-# map_dir = file.path(data_dir, "spmaps")
+# map_dir = file.path(data_dir, "spmaps_unmasked")
 # dir.create(map_dir)
 
 ## Functions
