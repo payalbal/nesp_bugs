@@ -347,7 +347,7 @@ nrow(ala_dat[names2 == TRUE]) == length(which(ala_dat$scientificName %in% ala_na
 
 
 ## Save cleaned ALA data ####
-saveRDS(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".rds")))
-write.csv(ala_dat, file = file.path(output_dir, paste0("clean_ala_", Sys.Date(),".csv")))
+saveRDS(ala_dat, file = file.path(output_dir, paste0("clean1_ala_", Sys.Date(),".rds")))
+write.csv(ala_dat, file = file.path(output_dir, paste0("clean1_ala_", Sys.Date(),".csv")))
 
 

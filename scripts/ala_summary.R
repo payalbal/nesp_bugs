@@ -31,7 +31,7 @@ message(cat("Number of species in AFD checklist: "),
 ## Load ALA data
 ala_raw <- readRDS(file.path(output_dir, "merged_ala_2020-10-02.rds"))
 ala_dat <- list.files(output_dir, 
-                      pattern = "clean_ala*.*.rds$", 
+                      pattern = "clean1_ala*.*.rds$", 
                       full.names = TRUE)
 ala_dat <- readRDS(ala_dat)
 ala_species <- sort(unique(ala_dat$scientificName))
@@ -117,6 +117,13 @@ nrow(count1) + nrow(countLTE20) + nrow(countMT20) == nrow(counts)
 nrow(count1) + nrow(countLTE20) + nrow(countMT20) == length(afd_species)
 ## because we have additional species in ALA compared to AFD checklist
 ## see names3.csv and names2.csv
+
+## List for ALA mapping (Oct 2020)
+countMTE5 <- counts[which(counts$N >= 5)]
+countMTE5 <- countMTE5[order(N)]
+range(countMTE5$N)
+write.csv(countMTE5, file = file.path(output_dir, "countMTE5.csv"), row.names = FALSE)
+
 
 ## List for DAWE
 ## List of 98904 species from the cleaned ALA data that have 0 or less than 20 records

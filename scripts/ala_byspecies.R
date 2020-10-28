@@ -25,12 +25,10 @@ dir.create(map_dir)
 # map_dir = file.path(data_dir, "spmaps_unmasked")
 # dir.create(map_dir)
 
-## Functions
-'%!in%' <- function(x,y)!('%in%'(x,y))
 
-## Load cleaned ALA data
+## Load cleaned ALA data ####
 ala_dat <- list.files(output_dir, 
-                      pattern = "clean_ala*.*.rds$", 
+                      pattern = "clean1_ala*.*.rds$", 
                       full.names = TRUE)
 ala_dat <- readRDS(ala_dat)
 message(cat("Number of records in data: "),
@@ -53,7 +51,7 @@ drop_cols
 message(cat("Number of columns being dropped: "),
         length(drop_cols))
 ala_dat[, (drop_cols) := NULL]
-message(cat("Number of columns in data: "),
+message(cat("Number of columns in updated data: "),
         dim(ala_dat)[2])
 
 
@@ -80,19 +78,78 @@ for(i in 1: length(exclude)){
 }
 
 
+## Create species file names & add to data as column ####
+## NOTE: This step revelas duplicates in species names in the data;
+## These are corrected in the data, not dropped
+ala_species <- sort(unique(ala_dat$scientificName))
+message(cat("Number of species with data: "),
+        length(ala_species))
+message(cat("Duplicates found in ala_species: "),
+        sum(duplicated(ala_species)))
+
+## Text modification
+spfilename <- str_replace_all(ala_species, " ", "00xx00")
+message(cat("Duplicates found in spfilename: "),
+        sum(duplicated(spfilename)))
+
+spfilename <- str_replace_all(spfilename, "[^[:alnum:]]", "")
+message(cat("Duplicates found in spfilename: "),
+        sum(duplicated(spfilename)))
+
+spfilename <- tolower(gsub("00xx00", "_", spfilename))
+message(cat("Duplicates found in spfilename: "),
+        sum(duplicated(spfilename)))
+spfilename <- unique(spfilename)
+length(unique(spfilename))
+
+## Identify duplicates in species name in data
+spfilename[duplicated(spfilename)]
+grep("incertae", spfilename)
+ala_species[grep("incertae", spfilename)]
+temp <- ala_species[grep("incertae", spfilename)]
+dim(ala_dat[scientificName == temp[1]])
+dim(ala_dat[scientificName == temp[2]])
+
+## Modify data to correct duplicates in species name; no records dropped
+ala_dat[scientificName == temp[2], scientificName := temp[1]]
+dim(ala_dat[scientificName == temp[1]]) ## check
+dim(ala_dat[scientificName == temp[2]]) ## check
+
+## Add species file names column to data
+y <- ala_dat$scientificName
+y <- str_replace_all(y, " ", "00xx00")
+y <- str_replace_all(y, "[^[:alnum:]]", "")
+y <- tolower(gsub("00xx00", "_", y))
+x <- sort(unique(y))
+sum(x == sort(spfilename)) ## Check
+ala_dat[, spfile := y]
+dim(ala_dat)
+
+
+## Save updated data (all) ####
+saveRDS(ala_dat, file = file.path(output_dir, paste0("clean2_ala_", Sys.Date(),".rds")))
+write.csv(ala_dat, file = file.path(output_dir, paste0("clean2_ala_", Sys.Date(),".csv")))
+
+
+
 ## Save data by species ####
+## Load cleaned ALA data
+ala_dat <- list.files(output_dir,
+                      pattern = "clean2_ala*.*.rds$",
+                      full.names = TRUE)
+ala_dat <- readRDS(ala_dat)
+message(cat("Number of records in data: "),
+        nrow(ala_dat))
+
 ## Species list
 ala_species <- sort(unique(ala_dat$scientificName))
 message(cat("Number of species with data: "),
         length(ala_species))
 
-# ## Subset for trials
-# ala_species <- ala_species[sample(1:length(ala_species), 500, replace=FALSE)]
-
-## Mask file
+## Load mask file for pdf
 mask.file = file.path(output_dir, "ausmask_WGS.tif")
 # mask.file = file.path(output_dir, "aus_mainland_WGS.tif") 
-# 
+
 # ## Coarse res mask for pdf plot
 # aus.mask <- rnaturalearth::ne_countries(country = "australia",
 #                                         returnclass = "sf")
@@ -112,11 +169,13 @@ sum(is.na(ala_dat$catalogueNumber))
 
 n <- data.frame()
 ctr <- 0
+
+start <- Sys.time()
 for (i in ala_species){
   ctr <- ctr + 1
   
   ## Get species data
-  message(cat("setp ", ctr, "of ", length(ala_species), "..."))
+  message(cat("Step ", ctr, "of ", length(ala_species), "..."))
   message(cat("Processing species: "),
           i)
   temp <- ala_dat[scientificName == i]
@@ -137,12 +196,11 @@ for (i in ala_species){
   ## Tabulate number of records lost
   n <- rbind(n, c(n1, n2, n1-n2))
   
-  ## Create file name
-  spname <- paste0(word(i,1), "00xx00", word(i,-1))
-  spname <- str_replace_all(spname, "[^[:alnum:]]", "")
-  spname <- tolower(gsub("00xx00", "_", spname))
-  
   ## Save species file
+  spname <- unique(temp$spfile)
+  if (length(spname) > 1){
+    stop("Error: More than 1 unique spname for naming species file...")
+  }
   saveRDS(as.data.table(temp),
           file = file.path(data_dir, paste0(spname, ".rds")))
   
@@ -164,6 +222,10 @@ for (i in ala_species){
   
   dev.off()
 }
+
+## Record time taken to complete data sving by species
+end <- Sys.time()
+end - start
 
 ## Save number of duplicated records lost for each species
 names(n) <- c("org", "final", "duplicates")
