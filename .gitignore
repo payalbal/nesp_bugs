@@ -3,6 +3,8 @@
 ##########################
 data/
 output/
+docs/
+scripts/temp/
 
 # R files #
 ###########

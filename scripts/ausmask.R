@@ -6,26 +6,23 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-devtools::install_github('smwindecker/gdaltools', force = TRUE)
+# devtools::install_github('smwindecker/gdaltools', force = TRUE)
+# devtools::install_github('skiptoniam/sense', force = TRUE)
 
-x <- c("sp", "raster", "gdaltools", "rgdal", "gdalUtils", "rnaturalearth", "rnaturalearthhires", "devtools", "usethis")
+x <- c("sp", "raster", "gdaltools", "rgdal", "gdalUtils", "rnaturalearth", "devtools", "usethis", "sense")
 lapply(x, require, character.only = TRUE)
 
 
 ## Server paths
-output_dir = file.path(getwd(), "nesp_bugs", "outputs", "masks")
-bugs_data = file.path(getwd(), "nesp_bugs", "nesp_bugs_data")
-
-# ## Local paths
-# output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs/masks"
-# bugs_data = "/Volumes/uom_data/nesp_bugs_data"
+bugs_data = file.path("/tempdata/research-cifs/uom_data/nesp_bugs_data")
+mask_data = file.path(bugs_data, "masks")
+output_dir = file.path(bugs_data, "outputs", "masks")
 
 # install.packages("rnaturalearthhires", repos = "http://packages.ropensci.org", type = "binary")
-# devtools::install_github('skiptoniam/sense')
-source("/Users/payalb/Dropbox/Projects/discovery_trade/analyses/regSSP_fraclu/scripts/gdal_raster_functions.R")
+# source("/Users/payalb/Dropbox/Projects/discovery_trade/analyses/regSSP_fraclu/scripts/gdal_raster_functions.R")
 
 
-## Temp mask using rnaturaleath package ####
+## Coarse mask using rnaturaleath package ####
 plot(sf::st_geometry(rnaturalearth::ne_countries(country = "australia",
                                                  returnclass = "sf")))
 ## coastline more detailed in ne_states compared to ne_country
@@ -49,10 +46,45 @@ writeRaster(aus.mask, "./output/ausmask_3577.tif", format = "GTiff")
 writeRaster(aus.mask.wgs, "./output/ausmask_WGS.tif", format = "GTiff")
 
 
-## Mask using GEODATA COAST 100K 2004 ####
+## Final mask with islands + terriroties ####
+## File: Topo250kv3AMBIS3islBlnNoaa is a blend on AU jursidiction data with NOAA coastline
+## Auhtor: Keith Hayes, Data61, CSIRO
+## Sources: 
+## AMSIS http://www.ga.gov.au/scientific-topics/marine/jurisdiction/amsis
+## NOAA https://www.ngdc.noaa.gov/mgg/shorelines/ 
+## See data doc for  QGIS processing on file Topo250kv3AMBIS3islBlnNoaa > aus_lands.gpkg
+auslands <- rgdal::readOGR(file.path(mask_data, "aus_lands.gpkg"))
+unique(auslands$FEATTYPE)
+
+## Convert to raster - 1km2
+ausmask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
+infile <- file.path(mask_data, "aus_lands.gpkg")
+outfile <- file.path(output_dir, "ausmask_noaa_1km.tif")
+rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(auslands)[c(1,2,3,4)])
+
+## Reproject to WGS84 - 1km
+infile <- outfile
+outfile <- file.path(output_dir, "ausmask_noaa_1kmWGS.tif")
+source_crs <- crs(raster(infile))
+new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+new_res <- res(ausmask)
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
+
+## Reproject to Equal earth - 250m
+infile <- file.path(output_dir, "ausmask_noaa_1km.tif")
+outfile <- file.path(output_dir, "ausmask_noaa_250mEE.tif")
+source_crs <- crs(raster(infile))
+new_crs <- "+proj=aea +lat_0=0 +lon_0=132 +lat_1=-18 +lat_2=-36 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+new_res <-c(250, 250) 
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
+raster(outfile)
+
+
+## OTHER
+## Mask using GEODATA COAST 100K 2004####
 ## Projection: Projection/datum: Geographical coordinates using the Geocentric Datum of Australia 1994 (GDA94)
-# aus_geodata_poly <- sf::st_read(file.path(bugs_data, "env_data/GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
-aus_geodata <- rgdal::readOGR(file.path(bugs_data, "env_data/GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
+# aus_geodata_poly <- sf::st_read(file.path(mask_data, "GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
+aus_geodata <- rgdal::readOGR(file.path(mask_data, "GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
 unique(aus_geodata$FEAT_CODE)
 
 ## Convert to raster
@@ -145,7 +177,6 @@ plot(raster(outfile))
 
 
 
-## OTHER
 ## Mask using GADM ####
 reg_mask <- getData("GADM", country = region, level = 0, path = rdata_path)
 reg_mask <- gSimplify(reg_mask, tol = 0.00833)
@@ -164,7 +195,7 @@ reg_mask <- aggregate(reg_mask, fact = 10)
 ## Layer provided by Skip W
 ## Includes offshore territoties and Islands
 ## Needs to be clipped down by extent/boundinng box INCLUDING Australia + territories EXCLUDING Antractica
-aus_noaa <- rgdal::readOGR("/Volumes/uom_data/nesp_bugs_data/Topo250kv3AMBIS3islBlnNoaa/Topo250kv3AMBIS3islBlnNoaa.shp")
+aus_noaa <- rgdal::readOGR("/Volumes/uom_data/nesp_bugs_data/masks/Topo250kv3AMBIS3islBlnNoaa/Topo250kv3AMBIS3islBlnNoaa.shp")
 raster::extent(aus_noaa@bbox)
 
 ## EXTRA
