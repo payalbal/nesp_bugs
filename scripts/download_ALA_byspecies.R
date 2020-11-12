@@ -1,6 +1,4 @@
-## References:
-## https://cloud.r-project.org/web/packages/ALA4R/ALA4R.pdf
-
+## DOWNLOAD ALA DATA BY SPECIES NAMES
 
 ## Set working environment ####
 rm(list = ls())
@@ -50,19 +48,19 @@ start.time <- Sys.time()
 invisible(future.apply::future_lapply(afd_species,
                                       function(x){
                                         tmp <- tryCatch(expr = get_ala_spdata(x,
-                                                                            extra_fields = TRUE,
-                                                                            specimens_only = TRUE,
-                                                                            remove_duplicates = TRUE,
-                                                                            dst = ala_dir,
-                                                                            save.map = TRUE,
-                                                                            reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
-                                                                            email = paste0("bal.payal+", sample(1:100, 1), "@gmail.com")),
+                                                                              extra_fields = TRUE,
+                                                                              specimens_only = TRUE,
+                                                                              remove_duplicates = TRUE,
+                                                                              dst = ala_dir,
+                                                                              save.map = TRUE,
+                                                                              reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
+                                                                              email = paste0("bal.payal+", sample(1:100, 1), "@gmail.com")),
                                                         error = function(e){ 
                                                           print(paste("\nNot run: no records for", x))
                                                           
                                                           cat(paste(x, "\n"),
                                                               file = nodatalog, 
-                                                              append = T)
+                                                              append = TRUE)
                                                         })
                                       }))
 end.time <- Sys.time()

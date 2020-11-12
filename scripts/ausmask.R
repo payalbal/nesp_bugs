@@ -20,7 +20,7 @@ output_dir = file.path(bugs_data, "outputs", "masks")
 
 # install.packages("rnaturalearthhires", repos = "http://packages.ropensci.org", type = "binary")
 # source("/Users/payalb/Dropbox/Projects/discovery_trade/analyses/regSSP_fraclu/scripts/gdal_raster_functions.R")
-
+source(file.path(getwd(), "nesp_bugs/scripts/gdal_calc.R"))
 
 ## Coarse mask using rnaturaleath package ####
 plot(sf::st_geometry(rnaturalearth::ne_countries(country = "australia",
@@ -44,6 +44,17 @@ aus.mask <- projectRaster(aus.mask, crs= newproj)
 plot(aus.mask, col = "grey", axes = FALSE, box = FALSE, legend = FALSE)
 writeRaster(aus.mask, "./output/ausmask_3577.tif", format = "GTiff")
 writeRaster(aus.mask.wgs, "./output/ausmask_WGS.tif", format = "GTiff")
+
+
+# ## Coarse res mask for pdf plot - 100km2
+# aus.mask <- rnaturalearth::ne_countries(country = "australia",
+#                                         returnclass = "sf")
+# aus.mask <- as(aus.mask, "Spatial")
+# aus.mask <- rasterize(aus.mask, raster(ext=extent(aus.mask), 
+#                                        res =  0.01), field = 1) ## 1km2: 0.008333333
+# plot(aus.mask, col = "grey", axes = FALSE, box = FALSE, legend = FALSE)
+# writeRaster(aus.mask, 
+#             file = file.path(output_dir, "ausmask_WGS10.tif"), format = "GTiff")
 
 
 ## Final mask with islands + terriroties ####
@@ -77,7 +88,16 @@ source_crs <- crs(raster(infile))
 new_crs <- "+proj=aea +lat_0=0 +lon_0=132 +lat_1=-18 +lat_2=-36 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 new_res <-c(250, 250) 
 gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
-raster(outfile)
+
+## Set 0 as NAs
+outfile1 <- outfile
+outfile2 <- gsub(".tif", "_NA.tif", outfile)
+gdalcalc(calc="A==1", infile = outfile1, outfile = outfile2,
+         NoDataValue=0, overwrite=TRUE)
+
+x <- raster(outfile2)
+unique(getValues(raster(outfile2)))
+plot(x, col = "peru", axes = FALSE, box = FALSE, legend = FALSE)
 
 
 ## OTHER

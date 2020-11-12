@@ -18,7 +18,7 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table", "sp", "raster", "rgdal")
+x <- c("data.table", "sp", "raster", "rgdal", "alphahull")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -27,7 +27,7 @@ rm(x)
 bugs_data = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
 mask_data = file.path(bugs_data, "masks")
 output_dir = file.path(bugs_data, "outputs")
-spdata_dir = file.path(output_dir, "ala_data" ,"spdata")
+spdata_dir = file.path(output_dir, "ala_data" ,"spdata/spdata")
 
 ## Species files
 spfiles <- list.files(spdata_dir, recursive = FALSE, full.names = TRUE)
@@ -42,13 +42,21 @@ y <- stringr::str_replace_all(y, "[^[:alnum:]]", "")
 y <- tolower(gsub("00xx00", "_", y))
 y <- sort(unique(y))
 
-spfiles <- spfiles[tools::file_path_sans_ext(basename(spfiles)) %in% y]
+....spfiles <- spfiles[tools::file_path_sans_ext(basename(spfiles)) %in% y]
 message(cat("Number of files retained same as number of species with > = 5 records: "),
         length(spfiles) == dim(countMTE5)[1])
+unique(unlist(lapply(spfiles, object.size)))
+
+spsub <- spfiles[105]
+## EOO polygons
+temp <- readRDS(spsub[5])
+ahull(x, y = NULL, alpha)
+
+## AOO polygons
 
 
 ## Load mask
-ausmask <- file.path(output_dir, "masks", "ausmask_noaa_1km.tif")
+ausmask <- file.path(output_dir, "masks", "ausmask_noaa_250mEE.tif")
 ausmask <- raster(ausmask)
 plot(ausmask, axes = FALSE, box = FALSE, legend = FALSE)
 

@@ -20,14 +20,14 @@
 
 
 get_ala_spdata <- function(species,
-                         extra_fields = TRUE,
-                         specimens_only = TRUE,
-                         remove_duplicates = TRUE,
-                         dst = NULL,
-                         save.map = TRUE,
-                         reg.mask.file,
-                         email #needed for ALA4R 'offline' download
-                         # generate_doi = TRUE
+                           extra_fields = TRUE,
+                           specimens_only = TRUE,
+                           remove_duplicates = TRUE,
+                           dst = NULL,
+                           save.map = TRUE,
+                           reg.mask.file,
+                           email #needed for ALA4R 'offline' download
+                           # generate_doi = TRUE
 ){
   
   
