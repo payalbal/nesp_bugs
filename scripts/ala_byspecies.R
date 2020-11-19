@@ -131,6 +131,11 @@ sum(is.na(ala_dat$collectionID)) ## https://dwc.tdwg.org/list/#dwc_collectionID
 sum(is.na(ala_dat$institutionID))
 sum(is.na(ala_dat$catalogueNumber))
 
+## Check 'duplicateStatus' fields - NOT USEFUL
+## This field is not used to subset data
+grep("dup", names(ala_dat), value = TRUE)
+unique(ala_dat$duplicateStatus) ## https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/duplicate_status
+ala_dat[,.N,by = duplicateStatus]
 
 ## Summary of cleaned data ####
 message(cat("Number of records in cleaned data: "),
@@ -199,6 +204,18 @@ invisible(future.apply::future_lapply(ala_species,
                                       }))
 end.time <- Sys.time()
 end.time - start.time
+
+
+## Check files
+length(list.files(data_dir, pattern = ".txt$"))
+length(list.files(data_dir, pattern = ".rds$"))
+length(list.files(map_dir, pattern = ".pdf$"))
+lapply(list.files(data_dir, pattern = ".rds$", full.names = TRUE)[344:355], object.size)
+
+n <- sample(1:length(ala_species), 1)
+readRDS(list.files(data_dir, pattern = ".rds$", full.names = TRUE)[n]) ## read rds file
+browseURL(list.files(data_dir, pattern = ".rds$", full.names = TRUE)[n]) ## download data as zip file
+browseURL(list.files(map_dir, pattern = ".pdf$", full.names = TRUE)[n]) ## open pdf map in new tab
 
 
 # ## In sequence ####
@@ -273,12 +290,5 @@ end.time - start.time
 # 
 # saveRDS(n, file = file.path(output_dir, "duplicate_counts.rds"))
 # write.csv(n, file = file.path(output_dir, "duplicate_counts.csv"))
-
-
-## Check 'duplicateStatus' fields
-## This field is not used to subset data
-grep("dup", names(ala_dat), value = TRUE)
-unique(ala_dat$duplicateStatus) ## https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/duplicate_status
-ala_dat[,.N,by = duplicateStatus]
 
 
