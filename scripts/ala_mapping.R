@@ -16,8 +16,9 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
+
 options(rgl.useNULL=TRUE) ## for suppress warnings from library(red)
-x <- c("data.table", "sp", "raster", "rgdal", "alphahull", "red", "rCAT")
+x <- c("data.table", "sp", "raster", "rgdal", "alphahull", "red", "rCAT", "ConR", "rnaturalearthdata")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -27,6 +28,8 @@ mask_data = file.path(bugs_data, "masks")
 output_dir = file.path(bugs_data, "outputs")
 spdata_dir = file.path(output_dir, "ala_data" ,"spdata")
 map_dir = file.path(spdata_dir, "spmaps_unmasked")
+polypath = file.path(bugs_data, "outputs", "polygons")
+dir.create(polypath)
 
 ## Files
 spfiles <- list.files(spdata_dir, pattern= ".rds$", full.names = TRUE)
@@ -53,51 +56,83 @@ message(cat("Are the number of files (rds; pfd) retained
         length(mapfiles) == dim(countMTE5)[1])
 
 ## EOO polygons ##
-temp <- as.data.table(readRDS(spfiles[1]))
+n = 500
+temp <- as.data.table(readRDS(spfiles[n]))
 dim(temp)
-xy_all <- xy.coords(temp[ , c("longitude", "latitude")])
-# temp <- temp[!duplicated(temp[ , c("longitude", "latitude")]), ]
-xy_subset <- xy.coords(temp[!duplicated(temp[ , c("longitude", "latitude")]) , c("longitude", "latitude")])
-
-## Estimate EOO: red
-## https://cran.r-project.org/web/packages/red/index.html
-red_EOO <- red::eoo(as.matrix(cbind(xy_all$x, xy_all$y)))
-red_AOO <- red::aoo(as.matrix(cbind(xy_all$x, xy_all$y)))
-
-## Estimate EOO: rCAT in Cartesian Coorindates - XX
-## https://cran.r-project.org/web/packages/rCAT/index.html
-## Seems wrong. aoo is 3 irrspective of cell size.
-cartcords <- ll2cart(latr = xy_all$x, longr = xy_all$y)
-rcat_EOO <- rCAT::EOOarea(cartcords[,1:2])
-rcat_AOO <- rCAT::AOOsimp(cartcords[,1:2], cellsize = 100000)
-
+xyall <- xy.coords(temp[ , c("latitude", "longitude")])
+length(xyall[[1]])
 
 ## Estimate EOO: alphahull package
 ## https://cran.r-project.org/web/packages/alphahull/index.html
-ahull_EOO <- ahull(x = xy_subset$x, y = xy_subset$y, alpha = 3)
+## Used for mapping polygons only, NOT for EOO area calculations
+message("Removing duplicates from lat-long...")
+xysub <- xy.coords(temp[!duplicated(temp[ , c("latitude", "longitude")]) , c("latitude", "longitude")])
+length(xysub[[1]])
+ahull_EOO <- ahull(x = xysub$x, y = xysub$y, alpha = 2)
 areaahull(ahull_EOO)
 plot(raster(mask.file), col = "khaki", axes = FALSE, box = FALSE, legend = FALSE)
 plot(ahull_EOO, add = TRUE, col = "mediumaquamarine")
 points(temp[,.(longitude, latitude)], pch = 2, col = "navy", cex = 0.5)
 
 
-# Random sample in the unit square
-x <- runif(20, 0, 180)
-y <- runif(20, 0, 90)
-p <- as.data.frame(cbind(x, y))
-# p <- xy.coords(p)
-pcart <- ll2cart(latr = p$x, longr = p$y)
+## Estimate EOO: ConR package - minimum convex polygon or alpha hulls
+## https://cran.r-project.org/web/packages/ConR/index.html
+## 
+## Notes: 
+##  WGS84 required for data
+##  data format: latitude, longitude (in decimal degrees), and taxon name
+## outputs for EOO and AOO same as from {red} when method.range = "convex.hull"
+require(rnaturalearthdata)
+setwd("~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/")
+df <- temp[ , .(latitude, longitude, scientificName, family, year)]
+spname <- unique(temp$spfile)
+basemap <- readOGR(file.path(output_dir, "masks/auslands_wgs84.shp"))
+names(df) <- c("latitude", "longitude", "tax", "family", "coly")
+out <- IUCN.eval(df, method.range = "alpha.hull",
+                 alpha = 2, Cell_size_AOO = 2,
+                 country_map = basemap,
+                 SubPop = FALSE,
+                 DrawMap = TRUE,
+                 write_file_option = "csv", 
+                 file_name = spname,
+                 export_shp = TRUE, 
+                 write_shp = TRUE, 
+                 write_results = TRUE)
 
-plot(p)  
 
-ahull.obj <- ahull(p, alpha = 2)
-alphahull::areaahull(ahull.obj)
+## country_map + exclude.area can be used for cropping to prelimiunary analysis area
 
-red::eoo(pcart[,1:2])
-red::aoo(pcart[,1:2])
+## Estimate EOO: rCAT package (endoresed by IUCN) - minimum convex polygon
+## https://cran.r-project.org/web/packages/rCAT/index.html
+## Lat, long data points format
+x <- xyall$x
+y <- xyall$y
+xy <- data.frame(lat = x, long = y)
+## find the true centre of the points
+cp <- trueCOGll(xy)
+## project to an equal area projection
+xy_proj <- simProjWiz(xy,cp)
+## Calculate the Extent of Occurrence EOO
+## Returns: area returned is in x,y units, but negative as polygon is constructed anticlockwise
+rcatEOO_m2 <- EOOarea(xy_proj)
+rcatEOO_km2 <- rcatEOO_m2/1000000
+## Calculate the Area of Occupancy AOO for 2km cells
+## Returns: integer number of unique cells as an integer
+cellsize_m <- 2000
+rcatAOO_ncells <- AOOsimp(xy_proj, cellsize_m)
+rcatAOO_km2 <- rcatAOO_ncells * (cellsize_m/1000)^2
 
-rCAT::AOOsimp(pcart[,1:2], cellsize = 2)
-rCAT::EOOarea(pcart[,1:2])
+
+## Estimate EOO: red package - minimum convex polygon
+## https://cran.r-project.org/web/packages/red/index.html
+## long, lat data points format
+xy_mat <- as.matrix(cbind(xyall$y, xyall$x))
+red_EOO <- red::eoo(xy_mat)
+red_AOO <- red::aoo(xy_mat)
+
+
+
+
 
 ## Plot
 plot(raster(mask.file), col = "khaki", axes = FALSE, box = FALSE, legend = FALSE)

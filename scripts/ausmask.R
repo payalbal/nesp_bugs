@@ -67,6 +67,11 @@ writeRaster(aus.mask.wgs, "./output/ausmask_WGS.tif", format = "GTiff")
 auslands <- rgdal::readOGR(file.path(mask_data, "aus_lands.gpkg"))
 unique(auslands$FEATTYPE)
 
+## 
+wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+auslands_wgs84 <- spTransform(auslands, wgs_crs)
+writeOGR(auslands_wgs84, dsn = output_dir, layer = "auslands_wgs84", driver="ESRI Shapefile")
+
 ## Convert to raster - 1km2
 ausmask <- raster(file.path(output_dir, "ausmask_WGS.tif"))
 infile <- file.path(mask_data, "aus_lands.gpkg")
