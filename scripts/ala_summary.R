@@ -217,7 +217,7 @@ for(i in x){
 
 
 ## >> Check for records without date ####
-message(cat("Number of records whtout date: "),
+message(cat("Number of records without date: "),
         sum(is.na(ala_dat$eventDate)))
 x <- grep("date|Date" , qa$name, value = TRUE)
 for(i in x){
