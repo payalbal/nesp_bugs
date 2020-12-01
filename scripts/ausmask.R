@@ -37,6 +37,9 @@ unique(auslands$FEATTYPE)
 wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 auslands_wgs84 <- spTransform(auslands, wgs_crs)
 writeOGR(auslands_wgs84, dsn = output_dir, layer = "auslands_wgs84", driver="ESRI Shapefile")
+out <- rgeos::gUnionCascaded(auslands_wgs84)
+crs(out)
+shapefile(out, filename = file.path(output_dir, "auslands_1poly_wgs84.shp"))
 
 ## >> NOAA raster mask in WGS ####
 ## Convert to raster - 1km.tif

@@ -4,43 +4,87 @@
 #' @author Payal Bal
 #'
 #' @param species_filename name of species as per 'scientificName' in ALA data
-#' @param maskfile mask file for Australia
+#' @param mask_file mask file for Australia
 #' @param data_dir directory where rds files will be stored
-#' @param specieslog text file for recording number of duplicated records lost while processing
-#' @return (1) species data as _masked.rds and (2) species log with number of records before and after masking as .txt
+#' @return (1) species data as _masked.rds; (2) species log with number of records before and after masking as .txt
 #'
 #' @examples
-#' spfile <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/ala_data/spdata/plakobranchus_ocellatus.rds"
-# test <- save_spdata(species_filename = spfile, 
-#                     maskfile = , 
-#                     data_dir = "./", 
-#                     map_dir = "./"
-#                     specieslog = "./Inquisitor_flindersianus_log.txt")
+#' spfile = ...
+#' mask_file = ...
+#' data_dir = "./
+#' mask_spdat(species_filename, mask_file = mask_file, data_dir = spmasked_dir)
 
 
 mask_spdat <- function(species_filename, mask_file, data_dir) {
   
   ## Read data
-  dat <- as.data.table(readRDS(species_filename))
-  spname <- unique(dat$spfile)
+  dat_all <- dat <- as.data.table(readRDS(species_filename))
   
-  ## Original number of records, before masking
-  n_clean2 <- nrow(dat)
+  ## Load mask
+  domain.mask <- raster(mask_file)
   
-  ## Mask
+  ## Clip data by mask extent 
+  dat <- dat[which(longitude > domain.mask@extent@xmin)]
+  dat <- dat[which(longitude < domain.mask@extent@xmax)]
+  dat <- dat[which(latitude > domain.mask@extent@ymin)]
+  dat <- dat[which(latitude < domain.mask@extent@ymax)]
   
-  
-  ## Number of records after masking
-  n_masked <- nrow(dat)
-  
-  ## Save species file
-  saveRDS(as.data.table(dat),
-          file = file.path(data_dir, paste0(spname, "_masked.rds")))
+  if (nrow(dat) > 0) { 
+    
+    ## Clip data if outside mask polygon(s)
+    sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
+                        proj4string = crs(domain.mask))
+    grd.pts<-extract(domain.mask, sp)
+    
+    ## If any points fall within mask, then..
+    if (any(!is.na(grd.pts))){
+      
+      ## subset data and.. 
+      dat <- dat[!is.na(grd.pts),]
+      
+      ## save species data file
+      saveRDS(as.data.table(dat),
+              file = file.path(data_dir, paste0(unique(dat$spfile), "_masked.rds")))
+    }
+  }
   
   ## Write to log file for species
-  specieslog <- paste0(data_dir, "/", spname, "_log", gsub("-", "", Sys.Date()), ".txt")
+  specieslog <- paste0(data_dir, "/", unique(dat$spfile), "_log", gsub("-", "", Sys.Date()), ".csv")
   cat(c("species", "n_clean2", "n_masked", "\n"),
       file = specieslog, append = T)
-  cat(c(spfile, n_clean2, n_masked, "\n"),
+  cat(c(unique(dat$spfile), nrow(dat_all), nrow(dat), "\n"),
       file = specieslog, append = T)
 }
+
+
+# ## Debugging code:
+# ausmask <- raster(mask_file)
+# clearPlot()
+# quickPlot::Plot(ausmask, 
+#                 title = "",
+#                 axes = FALSE, 
+#                 legend = FALSE,
+#                 col = "khaki", 
+#                 addTo = "ausmask", 
+#                 new = TRUE)
+# ## Unmasked data
+# sp_xy <- SpatialPoints(dat[,c("longitude", "latitude")], proj4string = crs(ausmask))
+# Plot(sp_xy, pch = 17, 
+#      col = "darkcyan", 
+#      title = "", 
+#      addTo = "ausmask")
+# 
+# ## Masked data
+# vals <- extract(ausmask, sp_xy)
+# in_mask <- !is.na(vals)
+# dat_masked <- dat[in_mask, ]
+# sp_xy <- SpatialPoints(dat_masked[,c("longitude", "latitude")], proj4string = crs(ausmask))
+# Plot(sp_xy, 
+#      pch = 17, 
+#      col = "darkred", 
+#      title = "", 
+#      addTo = "ausmask")
+# 
+# ## To read logfiles (for later)
+# temp <- read.csv(specieslog, header = TRUE, sep = "")
+

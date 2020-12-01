@@ -16,8 +16,9 @@ gc()
 # system("ps")
 # system("pkill -f R")
 x <- c("data.table", "sp", "raster", "rgdal", "rgeos",
+       "quickPlot", "fastshp",
        "alphahull", "ConR", "rnaturalearthdata", 
-       "future", "future.apply")
+       "future", "future.apply", "parallel")
 lapply(x, require, character.only = TRUE)
 # options(rgl.useNULL=TRUE) ## to suppress warnings when using library(red)
 # x <- c("red", "rCAT")
@@ -39,65 +40,50 @@ spfiles <- list.files(spdata_dir, pattern= ".rds$", full.names = TRUE)
 message(cat("Total number of species in cleaned ALA data: "),
         length(spfiles))
 
+## Mask data ####
+source("/tempdata/workdir/nesp_bugs/scripts/mask_spdat.R")
 mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
-basemap_file <- file.path(output_dir, "masks", "auslands_wgs84.shp")
 
-## Step 1 - Mask data
-all_na <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/ala_data/spdata/cosa_pharetra.rds"
-species_filename <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/ala_data/spdata/oithona_similis.rds"
-species_filename <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/ala_data/spdata/plakobranchus_ocellatus.rds"
-species_filename <- spfiles[10]
+## Package: mclappy
+mc.cores = future::availableCores()-2
+set.seed(1, kind = "L'Ecuyer-CMRG" )
+system.time(mclapply(spfiles,
+                     mask_spdat,
+                     mask_file = mask_file, 
+                     data_dir = spmasked_dir,
+                     mc.cores = mc.cores))
+length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
 
-dat <- as.data.table(readRDS(species_filename))
-system.time(plot(raster(mask_file), col = "khaki", axes = FALSE, box = FALSE, legend = FALSE))
-system.time(quickPlot::Plot(ausmask, col = "khaki", axes = FALSE, legend = FALSE, title = ""))
-system.time(plot(basemap, col = "khaki"))
-# ## Clip points to shapefile
-# wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-# basemap <- readOGR(basemap_file, verbose = FALSE)
-# crs(basemap) <- wgs_crs
-# sp_xy <- SpatialPoints(dat[,c("longitude", "latitude")], proj4string = CRS(as.character(wgs_crs)))
-# plot(sp_xy, add = TRUE, pch = 2, col = "navy", cex = 0.5)
-# int <- gIntersects(sp_xy, basemap) 
+## Note: mclapply() is much faster than future_lapply()
+## Cannot use tryCatch with mclappply??
+## Can use this for subsequent runs if no errors show from first run using future_lapply()
 
-## Clip points to raster mask
-ausmask <- raster(mask_file)
-sp_xy <- SpatialPoints(dat[,c("longitude", "latitude")], proj4string = crs(ausmask))
-plot(sp_xy, add = TRUE, pch = 2, col = "navy", cex = 0.5)
-vals <- extract(ausmask, sp_xy)
-in_mask <- !is.na(vals)
-dat_masked <- dat[in_mask, ]
-plot(sp_xy[in_mask], add = TRUE, pch = 2, col = "red", cex = 0.5)
+## Package: future
+plan(multiprocess, workers = future::availableCores()-2)
+options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. availablecores-1?/RAM-10?
+errorlog <- paste0(output_dir, "/errorlog_ala_polygonsR_", gsub("-", "", Sys.Date()), ".txt")
+writeLines(c(""), errorlog)
 
+system.time(
+  suppressWarnings(
+    future.apply::future_lapply(
+      spfiles[1:100],
+      function(x){
+        tmp <- tryCatch(expr = mask_spdat(species_filename = x,
+                                          mask_file = mask_file,
+                                          data_dir = spmasked_dir),
+                        error = function(e) {
+                          cat(
+                            paste(as.character(x), "\n"),
+                            file = errorlog,
+                            append = TRUE)
+                        })
+      }, future.seed = TRUE)))
 
-system.time(invisible(mclapply(spfiles,
-                               func,
-                               
-                               mc.cores = 10)))
+length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
 
-
-# ## Subset to species with > = 5 records - NOT USEFUL; 
-# ## Note: countMTE5.csv is from before cleaning-11 and saving by species (ala_byspecies.R)
-# countMTE5 <- as.data.table(read.csv(file.path(output_dir, "countMTE5.csv")))
-# y <- countMTE5$scientificName
-# y <- stringr::str_replace_all(y, " ", "00xx00")
-# y <- stringr::str_replace_all(y, "[^[:alnum:]]", "")
-# y <- tolower(gsub("00xx00", "_", y))
-# y <- sort(unique(y))
-# 
-# message(cat("Number of species with > = 5 records: "),
-#         dim(countMTE5)[1])
-# spfiles <- spfiles[tools::file_path_sans_ext(basename(spfiles)) %in% y]
-# mapfiles <- mapfiles[tools::file_path_sans_ext(basename(mapfiles)) %in% y]
-# message(cat("Are the number of files (rds; pfd) retained 
-#             same as number of species with > = 5 records: "),
-#         length(spfiles) == dim(countMTE5)[1], "; ",
-#         length(mapfiles) == dim(countMTE5)[1])
-
-
-
-
-## Estimate EOO: ConR package - minimum convex polygon or alpha hulls
+## Species polygons ####
+## Using ConR package - minimum convex polygon or alpha hulls
 ## https://cran.r-project.org/web/packages/ConR/index.html
 ## Notes: 
 ##  WGS84 required for data
@@ -105,13 +91,14 @@ system.time(invisible(mclapply(spfiles,
 ##  outputs for EOO and AOO same as from {red} when method.range = "convex.hull"
 ##  ** country_map + exclude.area can be used for cropping to prelimiunary analysis area
 
-spfiles <- list.files(spdata_dir, pattern= "_masked.rds$", full.names = TRUE)
+spfiles <- list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE)
+basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 
 ## Subset ####
 n = sample(1:length(spfiles), 20)
 spfile_sub <- spfiles[n]
 
-# ## Run in sequence ####
+# ## Run IUCN.eval in sequence ####
 # basemap <- readOGR(file.path(output_dir, "masks/auslands_wgs84.shp"))
 # setwd("~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/")
 # 
@@ -255,7 +242,9 @@ points(dat[,.(longitude, latitude)], pch = 2, col = "navy", cex = 0.5)
 
 
 
-## EXTRAS...
+## EXTRAS
+# ## future_lapply with warnings and errors: not working
+# ## ------------------------------------------
 # invisible(
 #   future.apply::future_lapply(
 #     spfile_sub,
@@ -286,3 +275,53 @@ points(dat[,.(longitude, latitude)], pch = 2, col = "navy", cex = 0.5)
 #                       }
 #       )
 #     }, future.seed = TRUE))
+#
+# 
+# ## Compare system times: Extract points
+# ## ------------------------------------------
+# wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+# basemap <- readOGR(basemap_file, verbose = FALSE)
+# crs(basemap) <- wgs_crs
+# ausmap <- raster(mask_file)
+# sp_xy <- SpatialPoints(dat[,c("longitude", "latitude")], proj4string = CRS(as.character(wgs_crs)))
+# system.time(gIntersects(sp_xy, basemap)) ## only gives true/FALSE
+# system.time(extract(ausmask, sp_xy)) ## can get indices
+# 
+# 
+# ## Comapre system times: Plotting 
+# ## ------------------------------------------
+# system.time(ausmask <- raster(mask_file))
+# system.time(plot(raster(mask_file), col = "khaki", axes = FALSE, box = FALSE, legend = FALSE))
+# plot(sp_xy, add = TRUE, pch = 17, col = "navy", cex = 0.5)
+# 
+# clearPlot()
+# system.time(quickPlot::Plot(ausmask, 
+#                             title = "",
+#                             axes = FALSE, 
+#                             legend = FALSE,
+#                             col = "khaki", 
+#                             addTo = "ausmask", 
+#                             new = TRUE))
+# Plot(sp_xy, pch = 17, 
+#      col = "darkcyan", 
+#      title = "", 
+#      addTo = "ausmask")
+# 
+# wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+# system.time(basemap <- shapefile(basemap_file))
+# crs(basemap) <- wgs_crs
+# 
+# system.time(plot(basemap, col = "khaki"))
+# plot(sp_xy, add = TRUE, pch = 17, col = "lightgreen", cex = 0.5)
+# 
+# clearPlot() 
+# system.time(quickPlot::Plot(basemap, 
+#                             title = "",
+#                             axes = FALSE, 
+#                             legend = FALSE,
+#                             addTo = "basemap", 
+#                             new = TRUE))
+# Plot(sp_xy, pch = 19, 
+#      col = "hotpink", 
+#      title = "", 
+#      addTo = "basemap")
