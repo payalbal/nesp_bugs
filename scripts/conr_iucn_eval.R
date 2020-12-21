@@ -1,6 +1,6 @@
 ## ConR::IUCN.eval function for parallel processing
 
-conr_iucn_eval <- function(species_filename, maskfile, basemap_path, working_dir, iucn_outpath) {
+conr_iucn_eval <- function(species_filename, basemap_path, working_dir, iucn_outpath) {
   
   ## Set wd for IUCN-eval function
   setwd(working_dir)
@@ -9,7 +9,10 @@ conr_iucn_eval <- function(species_filename, maskfile, basemap_path, working_dir
   dat <- as.data.table(readRDS(species_filename))
   spname <- unique(dat$spfile)
   dat <- dat[ , .(latitude, longitude, scientificName, family, year)]
-  names(dat) <- c("latitude", "longitude", "tax", "family", "coly")
+  names(dat) <- c("ddlat", "ddlon", "tax", "family", "coly")
+  
+  ## Load basemap
+  basemap <- readOGR(basemap_path, verbose = FALSE)
   
   ## Run ConR function
   out <- IUCN.eval(dat, 
@@ -17,22 +20,24 @@ conr_iucn_eval <- function(species_filename, maskfile, basemap_path, working_dir
                    alpha = 2, 
                    Cell_size_AOO = 2,
                    country_map = basemap,
+                   exclude.area = TRUE,
                    SubPop = FALSE,
                    DrawMap = TRUE,
                    write_file_option = "csv", 
                    file_name = spname,
                    export_shp = TRUE, 
                    write_shp = TRUE, 
-                   write_results = TRUE)
+                   write_results = TRUE,
+                   showWarnings = FALSE)
   
-  ## Save output
+  ## Save output per species
   saveRDS(out, file = paste0(iucn_outpath, "/", spname, ".rds"))
   
-  # if (write_shp2 == TRUE) {
+  # if (write_shp == TRUE) {
   #   if(!is.null(out[[1]][[2]])) {
   #     ## Write shapefiles
   #     ## Note: Functionality in IUCN.eval(..., write_shp = TRUE) gives errors
-  #     writeOGR(out[[1]][[2]], dsn = file.path(iucn_outpath, "shapesIUCN"), 
+  #     writeOGR(out[[1]][[2]], dsn = file.path(working_dir, "shapesIUCN"),
   #              layer= spname, driver="ESRI Shapefile")
   #   }
   # }

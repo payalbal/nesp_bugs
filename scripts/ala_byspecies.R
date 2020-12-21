@@ -87,7 +87,7 @@ message(cat("Duplicates found in ala_species: "),
         sum(duplicated(ala_species)))
 
 ## Text modification
-spfilename <- str_replace_all(ala_species, " ", "00xx00")
+spfilename <- stringr::str_replace_all(ala_species, " ", "00xx00")
 message(cat("Duplicates found in spfilename: "),
         sum(duplicated(spfilename)))
 

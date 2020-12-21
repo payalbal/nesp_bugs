@@ -1,13 +1,6 @@
-## ALA data mapping
-## For indivial species with > = 5 records
-## Species habitat polygons for EOO and AOO
-## Species distribution (wide/restricted)
-## Prelim analysis area (in/out; prop of habitat within) - to clip
-## Fire extent (yes/no; prop of habitat impacted) - 
-
-## For all species
-## Think or resolution of analyses. 
-## Stacked polygons or points per grid?
+## EOO and AOO polygons for ALA data
+## Notes...
+## Can estimate species distribution (wide/restricted)
 
 
 ## Set working environment ####
@@ -25,64 +18,79 @@ lapply(x, require, character.only = TRUE)
 # lapply(x, require, character.only = TRUE)
 rm(x)
 
-## Server paths
+## File paths and folders
 bugs_data = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_data, "outputs")
 spdata_dir = file.path(output_dir, "ala_data" ,"spdata")
+map_dir = file.path(output_dir, "spmaps_unmasked")
 spmasked_dir <- file.path(output_dir, "ala_data" ,"spdata_masked")
-dir.create(spmasked_dir)
-map_dir = file.path(spdata_dir, "spmaps_unmasked")
-polygons_dir = file.path(bugs_data, "outputs", "polygons")
-dir.create(polygons_dir)
+if (!dir.exists(spmasked_dir)) {dir.create(spmasked_dir)}
+polygons_dir = file.path(output_dir,"polygons")
+# unlink(polygons_dir, recursive = TRUE, force = TRUE)
+if (!dir.exists(polygons_dir)) {dir.create(polygons_dir)}
+working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
+# working_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/"
 
-## Files
-spfiles <- list.files(spdata_dir, pattern= ".rds$", full.names = TRUE)
-message(cat("Total number of species in cleaned ALA data: "),
-        length(spfiles))
 
-## Mask data ####
-source("/tempdata/workdir/nesp_bugs/scripts/mask_spdat.R")
-mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
 
-## Package: mclappy
-mc.cores = future::availableCores()-2
-set.seed(1, kind = "L'Ecuyer-CMRG" )
-system.time(mclapply(spfiles,
-                     mask_spdat,
-                     mask_file = mask_file, 
-                     data_dir = spmasked_dir,
-                     mc.cores = mc.cores))
-length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
+# ## I. Mask ALA data ####
+# spfiles <- list.files(spdata_dir, pattern = ".rds$", full.names = TRUE)
+# message(cat("Total number of species in cleaned ALA data: "),
+#         length(spfiles))
+# 
+# mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
+# source("/tempdata/workdir/nesp_bugs/scripts/mask_spdat.R")
+# 
+# mc.cores = future::availableCores()-2
+# set.seed(1, kind = "L'Ecuyer-CMRG" )
+# 
+# system.time(mclapply(spfiles,
+#                      mask_spdat,
+#                      mask_file = mask_file, 
+#                      data_dir = spmasked_dir,
+#                      mc.cores = mc.cores))
+# length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
+# length(list.files(spmasked_dir, pattern= ".csv$", full.names = TRUE))
+# 
+# ## Tabulate records lost in masking from species csv files
+# out <- list.files(spmasked_dir, pattern = ".csv$", full.names = TRUE)
+# out <- do.call("rbind", lapply(out, fread))
+# setorder(out, n_masked, n_clean2)
+# message(cat("Check if # species with >0 records == # rds files saved from mask_spdat:"),
+#         dim(out[n_masked > 0]) == 
+#           length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE)))
+# write.csv(out, file = file.path(output_dir, "ala_masked_datacounts.csv"), row.names = FALSE)
+# 
+# ## Note: mclapply() is much faster than future_lapply()
+# ## Cannot use tryCatch with mclappply??
+# 
+# # ## Package: future - for catching errors
+# # plan(multiprocess, workers = future::availableCores()-2)
+# # options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a finite value
+# # errorlog <- paste0(output_dir, "/errorlog_ala_polygonsR_", gsub("-", "", Sys.Date()), ".txt")
+# # writeLines(c(""), errorlog)
+# # 
+# # system.time(
+# #   suppressWarnings(
+# #     future.apply::future_lapply(
+# #       spfiles,
+# #       function(x){
+# #         tmp <- tryCatch(expr = mask_spdat(species_filename = x,
+# #                                           mask_file = mask_file,
+# #                                           data_dir = spmasked_dir),
+# #                         error = function(e) {
+# #                           cat(
+# #                             paste(as.character(x), "\n"),
+# #                             file = errorlog,
+# #                             append = TRUE)
+# #                         })
+# #       }, future.seed = TRUE)))
+# # length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
+# # length(list.files(spmasked_dir, pattern= ".csv$", full.names = TRUE))
 
-## Note: mclapply() is much faster than future_lapply()
-## Cannot use tryCatch with mclappply??
-## Can use this for subsequent runs if no errors show from first run using future_lapply()
 
-## Package: future
-plan(multiprocess, workers = future::availableCores()-2)
-options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. availablecores-1?/RAM-10?
-errorlog <- paste0(output_dir, "/errorlog_ala_polygonsR_", gsub("-", "", Sys.Date()), ".txt")
-writeLines(c(""), errorlog)
 
-system.time(
-  suppressWarnings(
-    future.apply::future_lapply(
-      spfiles[1:100],
-      function(x){
-        tmp <- tryCatch(expr = mask_spdat(species_filename = x,
-                                          mask_file = mask_file,
-                                          data_dir = spmasked_dir),
-                        error = function(e) {
-                          cat(
-                            paste(as.character(x), "\n"),
-                            file = errorlog,
-                            append = TRUE)
-                        })
-      }, future.seed = TRUE)))
-
-length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
-
-## Species polygons ####
+## II. Species polygons ####
 ## Using ConR package - minimum convex polygon or alpha hulls
 ## https://cran.r-project.org/web/packages/ConR/index.html
 ## Notes: 
@@ -90,20 +98,19 @@ length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
 ##  data format: latitude, longitude (in decimal degrees), and taxon name
 ##  outputs for EOO and AOO same as from {red} when method.range = "convex.hull"
 ##  ** country_map + exclude.area can be used for cropping to prelimiunary analysis area
-
 spfiles <- list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE)
+message(cat("Total number of species in cleaned ALA data: "),
+        length(spfiles))
+
+source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
 basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 
-## Subset ####
-n = sample(1:length(spfiles), 20)
-spfile_sub <- spfiles[n]
-
-# ## Run IUCN.eval in sequence ####
-# basemap <- readOGR(file.path(output_dir, "masks/auslands_wgs84.shp"))
-# setwd("~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/")
-# 
-# for (spfile in spfile_sub){
-#   
+# ## >> Run IUCN.eval in sequence ####
+# basemap <- readOGR(basemap_file)
+# setwd(working_dir) ## must do for IUCN.eval()
+#
+# for (spfile in spfiles){
+#
 #   ## Read species data
 #   dat <- as.data.table(readRDS(spfile))
 #   spname <- unique(dat$spfile)
@@ -111,83 +118,441 @@ spfile_sub <- spfiles[n]
 #               spname))
 #   dat <- dat[ , .(latitude, longitude, scientificName, family, year)]
 #   names(dat) <- c("latitude", "longitude", "tax", "family", "coly")
-#   
+#
 #   ## Run ConR function
-#   out <- IUCN.eval(dat, 
+#   out <- IUCN.eval(dat,
 #                    method.range = "alpha.hull",
-#                    alpha = 2, 
+#                    alpha = 2,
 #                    Cell_size_AOO = 2,
 #                    country_map = basemap,
+#                    exclude.area = TRUE,
 #                    SubPop = FALSE,
 #                    DrawMap = TRUE,
-#                    write_file_option = "csv", 
+#                    write_file_option = "csv",
 #                    file_name = spname,
-#                    export_shp = TRUE, 
-#                    write_shp = TRUE, 
+#                    export_shp = TRUE,
+#                    write_shp = TRUE,
 #                    write_results = TRUE)
-#   
+#
 #   saveRDS(out, file = paste0(polygons_dir, "/", spname, ".rds"))
-#   
+#
 #   ## Clear objects
 #   rm(dat, spname, out)
 # }
 
-## Run in parallel ####
-## Set working conditions for ConR function
-source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
-working_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/"
+## >> Run IUCN.eval in parallel ####
 
-## Package: mclappy
-system.time(invisible(mclapply(spfile_sub,
-                               conr_iucn_eval,
-                               basemap_path = basemap_file, 
-                               working_dir = working_dir, 
-                               iucn_outpath = polygons_dir, 
-                               mc.cores = 10)))
+# ## Package: mclappy - does not show/catch errors
+# mc.cores = future::availableCores()-2
+# set.seed(1, kind = "L'Ecuyer-CMRG" )
+# system.time(invisible(mclapply(spfiles,
+#                                conr_iucn_eval,
+#                                basemap_path = basemap_file,
+#                                working_dir = working_dir,
+#                                iucn_outpath = polygons_dir,
+#                                mc.cores = mc.cores)))
+# length(list.files(polygons_dir, pattern = ".rds$", full.names = TRUE))
+# length(list.files(polygons_dir, pattern = ".csv$", full.names = TRUE))
+#
+#   # ## Checks
+#   # rds <- list.files(polygons_dir, pattern = ".rds$", full.names = TRUE)
+#   # rds <- gsub(".rds$", "", rds)
+#   # csv <- list.files(polygons_dir, pattern = ".csv$", full.names = TRUE)
+#   # csv <- gsub(".csv$", "", csv)
+#   # length(rds) == length(csv)
+#   # which(!(rds %in% csv))
+#   # which(!(csv %in% rds))
+#
+# ## Marginally faster than future_lapply
 
-## Package: future
-plan(multiprocess, workers = 20)
-# plan(multiprocess, workers = future::availableCores()-2)
+## Package: future - for catching errors
+plan(multiprocess, workers = future::availableCores()-2)
 options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. availablecores-1?/RAM-10?
+errorlog <- paste0(output_dir, "/errorlog_ala_polygonsR_", gsub("-", "", Sys.Date()), ".txt")
+# if(file.exists(errorlog)){unlink(errorlog)}
+writeLines(c(""), errorlog)
 
 system.time(
   suppressWarnings(
     future.apply::future_lapply(
-      spfile_sub,
+      spfiles,
       function(x){
         tmp <- tryCatch(expr = conr_iucn_eval(species_filename = x,
-                                              basemap_path = basemap_path,
+                                              basemap_path = basemap_file,
                                               working_dir = working_dir,
-                                              iucn_outpath = polygons_dir)
+                                              iucn_outpath = polygons_dir),
+                        error = function(e) {
+                          cat(
+                            paste(as.character(x), "\n"),
+                            file = errorlog,
+                            append = TRUE)
+                        }
         )
       }, future.seed = TRUE)))
 
+## >> Check files ####
+csvfiles <- list.files(polygons_dir, pattern = ".csv$",
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .csv output files created from IUCN.eval(): "),
+        length(csvfiles))
+
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .rds output files created from IUCN.eval(): "),
+        length(rdsfiles))
+
+IUCNshpfiles <- list.files(file.path(polygons_dir, "shapesIUCN"), 
+                           pattern = ".shp$", 
+                           full.names = TRUE, all.files = TRUE)
+message(cat("Number of .shp output files created from IUCN.eval(): "),
+        length(IUCNshpfiles))
+
+pngfiles <- list.files(polygons_dir, pattern = "png$", recursive = TRUE, 
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .png map files created from IUCN.eval(): "),
+        length(pngfiles))
 
 
-## Save outputs
-out <- list.files(polygons_dir, pattern = ".csv", full.names = TRUE)
-out <- do.call("rbind", lapply(out , read.csv))
-out <- out[order(out$EOO, na.last = FALSE),]
-write.csv(out, file = file.path(output_dir, "IUCNcalc_alaMTE5sp.csv"))
+## III. Resolve errors ####
+errorlog <- file.path(output_dir, "errorlog_ala_polygonsR_20201215.txt")
+errorfiles <- trimws(readLines(errorlog)[-1])
+message(cat("NUmber of species showinng errors: "),
+        length(errorfiles))
+errorfiles %in% spfiles
 
-EOO_NAs <- out[which(is.na(out$EOO)),]
-write.csv(EOO_NAs, file = file.path(output_dir, "EOO_NAs_alaMTE5sp.csv"))
+polyfiles_sp <- basename(tools::file_path_sans_ext(rdsfiles))
+spfiles_sp <- basename(tools::file_path_sans_ext(spfiles))
+spfiles_sp <- gsub("_masked$", "", spfiles_sp)
+spfiles_sp[!spfiles_sp %in% polyfiles_sp]
+gsub("_masked", "", basename(tools::file_path_sans_ext(errorfiles))) %in% spfiles_sp[!spfiles_sp %in% polyfiles_sp]
+
+# errorsp <- c("Mecyclothorax (Mecyclothorax) howei",
+#              "Schizognathus viridiaeneus",
+#              "Diemodynerus saucius",
+#              "Pnirsus notaticollis",
+#              "Pheroliodes monteithi",
+#              "Helina micans",
+#              "Torresitrachia leichhardti",
+#              "Melanozosteria lentiginosa")
 
 
-## Preliminary analysis area
-paa <- file.path(bugs_data, "Preliminary_Analysis_Areas/prelim_analysis_areas_dissolve.shp")
-paa <- rgdal::readOGR(paa)
-plot(paa, add=TRUE)
+## >> Batch rerun for species showing errors ####
+polygons_error_dir <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons_errors"
+dir.create(polygons_error_dir)
+working_error_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons_errors/"
+setwd(working_error_dir)
 
-## Fire layers
-fireseverity <- raster(file.path(bugs_data, "fire/AUS_GEEBAM_Fire_Severity_NIAFED20200224/AUS_GEEBAM_Fire_Severity_NIAFED20200224.tif"))
-fireextent <- rgdal::readOGR(file.path(bugs_data, "fire/NIAFED_v20200623/NIAFED_20190701_20200622_v20200623.shp"))
+source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
+basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
+
+mc.cores = length(errorfiles)
+set.seed(1, kind = "L'Ecuyer-CMRG" )
+system.time(invisible(mclapply(errorfiles,
+                               conr_iucn_eval,
+                               basemap_path = basemap_file,
+                               working_dir = working_error_dir,
+                               iucn_outpath = polygons_error_dir,
+                               mc.cores = mc.cores)))
+## >> Warning message:
+##    In mclapply(errorfiles, conr_iucn_eval, basemap_path = basemap_file,:
+##    scheduled cores 4, 15, 21, 1, 86, 115, 99, 63, 30, 58, 52, 49, 80, 55 
+##    encountered errors in user code, all values of the jobs will be affected
+
+## Check # files created in error directory
+csvfiles <- list.files(polygons_error_dir, pattern = ".csv$",
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .csv output files created from IUCN.eval(): "),
+        length(csvfiles))
+
+rdsfiles <- list.files(polygons_error_dir, pattern = ".rds$", 
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .rds output files created from IUCN.eval(): "),
+        length(rdsfiles))
+
+IUCNshpfiles <- list.files(file.path(polygons_error_dir, "shapesIUCN"), 
+                           pattern = ".shp$", 
+                           full.names = TRUE, all.files = TRUE)
+message(cat("Number of .shp output files created from IUCN.eval(): "),
+        length(IUCNshpfiles))
+
+pngfiles <- list.files(polygons_error_dir, pattern = "png$", recursive = TRUE, 
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .png map files created from IUCN.eval(): "),
+        length(pngfiles))
+
+## Catch indices of species with unresolved errors from warninng message
+eidx <- c(4, 15, 21, 1, 86, 115, 99, 63, 30, 58, 52, 49, 80, 55)
+length(eidx)
+message(cat("Number of species with unresolved errors: "),
+        length(errorfiles) - length(rdsfiles))
+
+
+## >> Individual reruns for species with unresolved errors ####
+## NOTE: Rerun multiple times for a species
+basemap <- readOGR(file.path(output_dir, "masks/auslands_wgs84.shp"))
+
+## Read species data
+dat <- as.data.table(readRDS(errorfiles[eidx[5]]))
+dim(dat)
+spname <- unique(dat$spfile)
+message(cat("Processing species... ",
+            spname))
+dat <- dat[ , .(latitude, longitude, scientificName, family, year)]
+names(dat) <- c("latitude", "longitude", "tax", "family", "coly")
+
+## Run ConR function
+out <- IUCN.eval(dat,
+                 method.range = "alpha.hull",
+                 alpha = 2,
+                 Cell_size_AOO = 2,
+                 country_map = basemap,
+                 exclude.area = TRUE,
+                 SubPop = FALSE,
+                 DrawMap = TRUE,
+                 write_file_option = "csv",
+                 file_name = spname,
+                 export_shp = TRUE,
+                 write_shp = TRUE,
+                 write_results = TRUE)
+
+saveRDS(out, file = paste0(polygons_error_dir, "/", spname, ".rds"))
+
+## Clear objects
+rm(dat, spname, out)
+
+## Remaining species with unresolved errors
+## NOTE: 5 species remain with unsesolved errors
+##  >> Error in { : task 1 failed - "task 1 failed - "object 'case' not found""
+basename(errorfiles[eidx[c(2, 5, 10)]])
+
+
+## >> Copy files ####
+csvfiles2 <- list.files(polygons_error_dir, pattern = ".csv$",
+                        full.names = TRUE, all.files = TRUE)
+message(cat("Number of .csv output files created from IUCN.eval(): "),
+        length(csvfiles2))
+rdsfiles2 <- list.files(polygons_error_dir, pattern = ".rds$", 
+                        full.names = TRUE, all.files = TRUE)
+message(cat("Number of .rds output files created from IUCN.eval(): "),
+        length(rdsfiles2))
+
+IUCNshpfiles2 <- list.files(file.path(polygons_error_dir, "shapesIUCN"), 
+                            pattern = ".dbf$", 
+                            full.names = TRUE, all.files = TRUE)
+message(cat("Number of .shp output files created from IUCN.eval(): "),
+        length(IUCNshpfiles2))
+
+pngfiles2 <- list.files(polygons_error_dir, pattern = "png$", recursive = TRUE, 
+                        full.names = TRUE, all.files = TRUE)
+message(cat("Number of .png map files created from IUCN.eval(): "),
+        length(pngfiles2))
+
+file.copy(rdsfiles2, polygons_dir,
+          overwrite = FALSE, recursive = TRUE,
+          copy.mode = TRUE, copy.date = TRUE)
+file.remove(rdsfiles2)
+
+file.copy(csvfiles2, polygons_dir,
+          overwrite = FALSE, recursive = TRUE,
+          copy.mode = TRUE, copy.date = TRUE)
+file.remove(csvfiles2)
+
+IUCNshpfiles2 <- list.files(file.path(polygons_error_dir, "shapesIUCN"), 
+                            full.names = TRUE)
+file.copy(IUCNshpfiles2, file.path(polygons_dir, "shapesIUCN"),
+          overwrite = FALSE, recursive = TRUE,
+          copy.mode = TRUE, copy.date = TRUE)
+unlink(file.path(polygons_error_dir, "shapesIUCN"), recursive = TRUE)
+
+pngdirs <- list.dirs(polygons_error_dir)
+pngdirs <- pngdirs[-grep("/polygons_errors$", pngdirs)]
+for(i in pngdirs){
+  system(paste0("cp -R ", i, " ", polygons_dir))
+}
+unlink(polygons_error_dir, recursive = TRUE)
+
+
+## >> Check files ####
+csvfiles <- list.files(polygons_dir, pattern = ".csv$",
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .csv output files created from IUCN.eval(): "),
+        length(csvfiles))
+
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .rds output files created from IUCN.eval(): "),
+        length(rdsfiles))
+
+IUCNshpfiles <- list.files(file.path(polygons_dir, "shapesIUCN"), 
+                           pattern = ".shp$", 
+                           full.names = TRUE, all.files = TRUE)
+message(cat("Number of .shp output files created from IUCN.eval(): "),
+        length(IUCNshpfiles))
+
+pngfiles <- list.files(polygons_dir, pattern = "png$", recursive = TRUE, 
+                       full.names = TRUE, all.files = TRUE)
+message(cat("Number of .png map files created from IUCN.eval(): "),
+        length(pngfiles))
+
+
+
+## IV. Save IUCN.eval() outputs ####
+## >> AOO & EOO areas ####
+## Create data table from .csv output files
+csvfiles <- list.files(polygons_dir, pattern = ".csv$",
+                       full.names = TRUE, all.files = TRUE)
+out <- do.call("rbind", lapply(csvfiles , read.csv))
+dim(out)
+setorder(out, EOO, AOO)
+out <- as.data.table(out)
+write.csv(out, file = file.path(output_dir, "ala_polygons_areas.csv"), 
+          row.names = FALSE)
+
+message(cat("#species with EOOs: "),
+        nrow(out[!is.na(EOO)]))
+message(cat("#species without EOOs: "),
+        nrow(out[is.na(EOO)]))
+message(cat("max #records for species without EOOs: "),
+        max(out[is.na(EOO)]$Nbe_unique_occ.))
+
+
+## >> EOO polygons ####
+## Create list of .rds output files
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
+                       full.names = TRUE, all.files = TRUE)
+polynames <- basename(tools::file_path_sans_ext(rdsfiles))
+temp <- lapply(rdsfiles, readRDS)
+names(temp) <- polynames
+length(temp)
+saveRDS(temp, file = file.path(output_dir, "ala_IUCNeval_output.rds"))
+
+## Create list of SPDF from .rds output files
+temp2 <- lapply(temp, "[[", 1)
+temp2 <- lapply(temp2, "[[", 2)
+length(temp2)
+saveRDS(temp2, file = file.path(output_dir, "ala_polygons.rds"))
+
+## Create list of non-NULL SPDF for species with EOOs
+na.eooIDX <- sapply(temp2, length)
+na.eooIDX <- which(na.eooIDX == 0)
+message(cat("# Number of species without EOOS from IUCN.eval(): "),
+        length(na.eooIDX))
+message(cat("# Proportion of species without EOOS from IUCN.eval(): "),
+        length(na.eooIDX)/length(temp2))
+
+message(cat("# Number of species with EOOS from IUCN.eval(): "),
+        length(temp2) - length(na.eooIDX))
+message(cat("# Proportion of species with EOOS from IUCN.eval(): "),
+        (length(temp2) - length(na.eooIDX))/length(temp2))
+
+temp3 <- temp2[-na.eooIDX]
+length(temp3)
+saveRDS(temp3, file = file.path(output_dir, "ala_EOO.rds"))
+# temp <- do.call(cbind, temp3)
+# names(temp) <- names(temp3)
+
+## Create list of species names without EOOs
+errorlog <- file.path(output_dir, "errorlog_ala_polygonsR_20201215.txt")
+errorfiles <- trimws(readLines(errorlog)[-1])
+eidx <- c(4, 15, 21, 1, 86, 115, 99, 63, 30, 58, 52, 49, 80, 55)
+errorsp <- gsub("_masked.rds$", "", basename(errorfiles[eidx[c(2, 5, 10)]]))
+sort(c(names(na.eooIDX), errorsp))
+write.csv(sort(c(names(na.eooIDX), errorsp)), 
+          file = file.path(output_dir, "ala_noEOOspecies.csv"), 
+          row.names = FALSE)
+message(cat("Total number of species: "),
+        length(c(names(na.eooIDX), errorsp)) + length(temp3))
+
+
+
+
+## Display #records for species before/after masking ####
+counts <- fread(file.path(output_dir, "ala_masked_datacounts.csv"))
+message(cat("Number of species with more than 0 records: "),
+        nrow(counts[n_masked > 0]))
+message(cat("This is the same as number of polygons files created: "),
+        length(rdsfiles))
+## Because 3 files showed errors
+
+message(cat("Number of species with 0 records: "),
+        nrow(counts[n_masked == 0]))
+
+message(cat("Number of species with at least 3 records for creating EOO: "),
+        nrow(counts[n_masked >= 3]))
+## Becasue IUCN.eval() removes duplicates by name-lat-long
+
+
+
+
+
+# ## DEBUGGING <start> ------------------------------------------------ ####
+# polygons_dir <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons2"
+# dir.create(polygons_dir)
+# working_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons2/"
+# setwd(working_dir)
+# dat <- as.data.table(readRDS(spfiles[4]))
+# dim(dat)
+# spname <- unique(dat$spfile)
+# message(cat("Processing species... ",
+#             spname))
+# dat <- dat[ , .(latitude, longitude, scientificName, family, year)]
+# names(dat) <- c("latitude", "longitude", "tax", "family", "coly")
+# 
+# ## Run ConR function
+# out <- IUCN.eval(dat,
+#                  method.range = "alpha.hull",
+#                  alpha = 2,
+#                  Cell_size_AOO = 2,
+#                  country_map = basemap,
+#                  exclude.area = TRUE,
+#                  SubPop = FALSE,
+#                  DrawMap = TRUE,
+#                  write_file_option = "csv",
+#                  file_name = spname,
+#                  export_shp = TRUE,
+#                  write_shp = TRUE,
+#                  write_results = TRUE)
+# 
+# browseURL(pngfiles[grep(names(ala_polys)[4], pngfiles)])
+# 
+# ala_polys <- readRDS(file.path(output_dir, "ala_polygons.rds"))
+# mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
+# ausmask <- raster(mask_file)
+# ala_polys[4]
+# 
+clearPlot()
+quickPlot::Plot(ausmask,
+                title = "",
+                axes = FALSE,
+                legend = FALSE,
+                col = "khaki",
+                addTo = "ausmask",
+                new = TRUE)
+quickPlot::Plot(sp1,
+                cols = "tomato3",
+                title = "",
+                addTo = "ausmask")
+
+equalarea_proj <- CRS("+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
+sp1_ee <- spTransform(sp1, CRSobj = equalarea_proj)
+
+quickPlot::Plot(sp1_ee,
+                cols = "tomato3",
+                title = "",
+                addTo = "ausmask")
+sp1_ee <- readShapePoly("sp1", verbose=TRUE, proj4string=equalarea_proj)
+
+plot(raster(mask_file), col = "khaki", axes = FALSE, box = FALSE, legend = FALSE)
+plot(sp1, add = TRUE, pch = 17, col = "navy", cex = 0.5)
+
+# ## DEBUGGING <end> -------------------------------------------------- ####
 
 
 
 
 
 
+## EXTRA ------------------------------------------------------------- ####
 ## Other EOO options ####
 n <- 500
 dat <- as.data.table(readRDS(spfiles[n]))
@@ -240,14 +605,11 @@ points(dat[,.(longitude, latitude)], pch = 2, col = "navy", cex = 0.5)
 
 
 
-
-
-## EXTRAS
 # ## future_lapply with warnings and errors: not working
 # ## ------------------------------------------
 # invisible(
 #   future.apply::future_lapply(
-#     spfile_sub,
+#     spfiles,
 #     function(x){
 #       tmp <- tryCatch(expr = conr_iucn_eval(species_filename = x, 
 #                                             basemap_path = basemap_path, 
@@ -325,3 +687,9 @@ points(dat[,.(longitude, latitude)], pch = 2, col = "navy", cex = 0.5)
 #      col = "hotpink", 
 #      title = "", 
 #      addTo = "basemap")
+# 
+# 
+# ## To order files by date created
+# details <-  file.info(rdsfiles)
+# details  <-  details[with(details, order(as.POSIXct(mtime), decreasing = TRUE)), ]
+

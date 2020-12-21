@@ -19,9 +19,15 @@ mask_spdat <- function(species_filename, mask_file, data_dir) {
   
   ## Read data
   dat_all <- dat <- as.data.table(readRDS(species_filename))
+  spname <- unique(dat$spfile)
   
   ## Load mask
   domain.mask <- raster(mask_file)
+  
+  ## Create species log file
+  specieslog <- paste0(data_dir, "/", spname, "_log", gsub("-", "", Sys.Date()), ".csv")
+  cat(c("species", "n_clean2", "n_masked", "\n"),
+      file = specieslog, append = T)
   
   ## Clip data by mask extent 
   dat <- dat[which(longitude > domain.mask@extent@xmin)]
@@ -29,31 +35,41 @@ mask_spdat <- function(species_filename, mask_file, data_dir) {
   dat <- dat[which(latitude > domain.mask@extent@ymin)]
   dat <- dat[which(latitude < domain.mask@extent@ymax)]
   
-  if (nrow(dat) > 0) { 
+  if (nrow(dat) == 0) { 
     
-    ## Clip data if outside mask polygon(s)
+    ## Write to species log file: #records in updated data = 0
+    cat(c(spname, nrow(dat_all), 0, "\n"),
+        file = specieslog, append = T)
+    
+  } else {
+    
+    ## Clip data/occurrence points if they fall outside mask polygon(s)
     sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
                         proj4string = crs(domain.mask))
-    grd.pts<-extract(domain.mask, sp)
+    grd.pts <-extract(domain.mask, sp)
     
-    ## If any points fall within mask, then..
+    ## If at least one species point falls within mask, then..
+    ## Also check for if (nrow(dat) > 0)
     if (any(!is.na(grd.pts))){
       
-      ## subset data and.. 
+      ## Subset data
       dat <- dat[!is.na(grd.pts),]
       
-      ## save species data file
+      ## Save species data file
       saveRDS(as.data.table(dat),
-              file = file.path(data_dir, paste0(unique(dat$spfile), "_masked.rds")))
+              file = file.path(data_dir, paste0(spname, "_masked.rds")))
+      
+      ## Write to species log file: #records in updated data = nrow(dat)
+      cat(c(spname, nrow(dat_all), nrow(dat), "\n"),
+          file = specieslog, append = T)
+      
+    } else {
+      
+      ## Write to species log file: #records in updated data = 0
+      cat(c(spname, nrow(dat_all), 0, "\n"),
+          file = specieslog, append = T)
     }
   }
-  
-  ## Write to log file for species
-  specieslog <- paste0(data_dir, "/", unique(dat$spfile), "_log", gsub("-", "", Sys.Date()), ".csv")
-  cat(c("species", "n_clean2", "n_masked", "\n"),
-      file = specieslog, append = T)
-  cat(c(unique(dat$spfile), nrow(dat_all), nrow(dat), "\n"),
-      file = specieslog, append = T)
 }
 
 

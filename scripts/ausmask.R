@@ -9,7 +9,8 @@ gc()
 # devtools::install_github('smwindecker/gdaltools', force = TRUE)
 # devtools::install_github('skiptoniam/sense', force = TRUE)
 
-x <- c("sp", "raster", "gdaltools", "rgdal", "gdalUtils", "rnaturalearth", "devtools", "usethis", "sense")
+x <- c("sp", "raster", "gdaltools", "rgdal", "gdalUtils", 
+       "rnaturalearth", "devtools", "usethis", "sense","quickPlot")
 lapply(x, require, character.only = TRUE)
 
 
@@ -23,6 +24,7 @@ output_dir = file.path(bugs_data, "outputs", "masks")
 source(file.path(getwd(), "nesp_bugs/scripts/gdal_calc.R"))
 
 
+
 ## NOAA mask with islands + terriroties ---- ####
 ## File: Topo250kv3AMBIS3islBlnNoaa is a blend on AU jursidiction data with NOAA coastline
 ## Auhtor: Keith Hayes, Data61, CSIRO
@@ -33,6 +35,7 @@ source(file.path(getwd(), "nesp_bugs/scripts/gdal_calc.R"))
 auslands <- rgdal::readOGR(file.path(mask_data, "aus_lands.gpkg"))
 unique(auslands$FEATTYPE)
 
+
 ## >> Save as shapefile in WGS 84 - wgs84.shp ####
 wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 auslands_wgs84 <- spTransform(auslands, wgs_crs)
@@ -40,6 +43,7 @@ writeOGR(auslands_wgs84, dsn = output_dir, layer = "auslands_wgs84", driver="ESR
 out <- rgeos::gUnionCascaded(auslands_wgs84)
 crs(out)
 shapefile(out, filename = file.path(output_dir, "auslands_1poly_wgs84.shp"))
+
 
 ## >> NOAA raster mask in WGS ####
 ## Convert to raster - 1km.tif
@@ -68,26 +72,59 @@ plot(raster(outfile2), col = "peru", axes = FALSE, box = FALSE, legend = FALSE)
 ## Save as shapefile - 1kmWGS_NA.shp
 writeOGR(raster(outfile2), dsn = output_dir, layer = "ausmask_noaa_1kmWGS_NA", driver="ESRI Shapefile")
 
-## >> NOAA  mask in Equal earth ####
-## Reproject to Equal earth - 250mEE.tif
-infile <- file.path(output_dir, "ausmask_noaa_1kmWGS.tif")
-outfile <- file.path(output_dir, "ausmask_noaa_250mEE.tif")
-source_crs <- crs(raster(infile))
-new_crs <- "+proj=aea +lat_0=0 +lon_0=132 +lat_1=-18 +lat_2=-36 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-new_res <-c(250, 250) 
-gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
 
-## Set 0s as NA - 250mEE_NA.tif
+## >> NOAA  mask in Equal area ####
+## See Proj4 in https://spatialreference.org/ref/sr-org/australia-albers-equal-area-conic-134/
+## Reproject to Equal area - 250mEA.tif
+infile <- file.path(output_dir, "ausmask_noaa_1kmWGS.tif")
+outfile <- file.path(output_dir, "ausmask_noaa_250mEA.tif")
+source_crs <- crs(raster(infile))
+equalarea_proj <- "+proj=aea +lat_0=0 +lon_0=132 +lat_1=-18 +lat_2=-36 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+new_res <-c(250, 250) 
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = equalarea_proj, tr = new_res, verbose=TRUE)
+
+## Set 0s as NA - 250mEA_NA.tif
 outfile1 <- outfile
 outfile2 <- gsub(".tif", "_NA.tif", outfile)
 gdalcalc(calc="A==1", infile = outfile1, outfile = outfile2,
          NoDataValue=0, overwrite=TRUE)
-unique(getValues(raster(outfile2)))
-plot(raster(outfile2), col = "peru", axes = FALSE, box = FALSE, legend = FALSE)
+# plot(raster(outfile2), col = "peru", axes = FALSE, box = FALSE, legend = FALSE)
+
+# Random sample of raster to check for NAs
+sampleRandom(raster(outfile1), size = 50, ext = extent(raster(outfile1)) , na.rm = FALSE, sp=FALSE, asRaster=FALSE) 
+sampleRandom(raster(outfile2), size = 50, ext = extent(raster(outfile2)) , na.rm = FALSE, sp=FALSE, asRaster=FALSE) 
+
+## Clip to min extent of non NA values .... ?
+e <- extent(raster(infile))
+e <- as(e, "SpatialPolygons")
+sp::proj4string(e) <- crs(raster(infile))
+e_EA <- sp::spTransform(e, CRSobj = equalarea_proj)
+e_EA <- as.vector(extent(e_EA))
+e_EA <- e_EA[c(1,3,2,4)] #swap xmax and ymin values to use for te in gdalwarp
+
+infile <- outfile
+outfile <- file.path(output_dir, "ausmask_noaa_250mEA_clip.tif")
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, te = e_EA, te_srs = equalarea_proj)
 
 
 
-## Coarse mask using rnaturaleath package  ---- ####
+## Quickpolotting ####
+r <- raster(file)
+clearPlot()
+quickPlot::Plot(r,
+                title = "",
+                axes = FALSE,
+                legend = FALSE,
+                col = "khaki",
+                # addTo = "ausmask",
+                new = TRUE)
+
+
+
+
+
+## EXTRA ----- ####
+## Coarse mask using rnaturaleath package ####
 plot(sf::st_geometry(rnaturalearth::ne_countries(country = "australia",
                                                  returnclass = "sf")))
 ## coastline more detailed in ne_states compared to ne_country
@@ -110,7 +147,6 @@ plot(aus.mask, col = "grey", axes = FALSE, box = FALSE, legend = FALSE)
 writeRaster(aus.mask, "./output/ausmask_3577.tif", format = "GTiff")
 writeRaster(aus.mask.wgs, "./output/ausmask_WGS.tif", format = "GTiff")
 
-
 # ## Coarse res mask for pdf plot - 100km2
 # aus.mask <- rnaturalearth::ne_countries(country = "australia",
 #                                         returnclass = "sf")
@@ -122,13 +158,6 @@ writeRaster(aus.mask.wgs, "./output/ausmask_WGS.tif", format = "GTiff")
 #             file = file.path(output_dir, "ausmask_WGS10.tif"), format = "GTiff")
 
 
-
-
-
-
-
-
-## OTHER ----- ####
 ## Mask using GEODATA COAST 100K 2004####
 ## Projection: Projection/datum: Geographical coordinates using the Geocentric Datum of Australia 1994 (GDA94)
 # aus_geodata_poly <- sf::st_read(file.path(mask_data, "GEODATA COAST 100K 2004/61395_shp/australia/cstauscd_r.shp"))
@@ -173,7 +202,6 @@ source_crs <- crs(raster(infile))
 new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 new_res <- res(ausmask)
 gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
-
 plot(raster(outfile))
 unique(raster(outfile)[])
 
@@ -196,7 +224,6 @@ source_crs <- crs(raster(infile))
 new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 new_res <- res(ausmask)
 gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
-
 plot(raster(outfile))
 unique(raster(outfile)[])
 
@@ -215,14 +242,11 @@ rasterize_shp(infile, outfile, res = res(ausmask)[1], ext = extent(aus_geodata)[
 ## Reproject to WGS84
 infile <- outfile
 outfile <- file.path(output_dir, "aus_sea_WGS.tif")
-
 source_crs <- crs(raster(infile))
 new_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
 new_res <- res(ausmask)
 gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = new_crs, tr = new_res, verbose=TRUE)
-
 plot(raster(outfile))
-
 
 
 ## Mask using GADM ####
