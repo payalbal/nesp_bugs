@@ -23,30 +23,30 @@ remove_improper_names <- function(name_vector,
   originalN <- length(name_vector)
   
   # ## Remove names with brackets and quotation marks
-  # name_vector[grep(" (", name_vector, fixed = TRUE)] <- 
-  #   substr(name_vector[grep(" (", name_vector, fixed = TRUE)], 1, 
-  #          regexpr(" (", name_vector[grep(" (", name_vector, fixed = TRUE)], 
+  # name_vector[grep(" (", name_vector, fixed = TRUE)] <-
+  #   substr(name_vector[grep(" (", name_vector, fixed = TRUE)], 1,
+  #          regexpr(" (", name_vector[grep(" (", name_vector, fixed = TRUE)],
   #                  fixed=TRUE)-1)
-  # 
-  # name_vector[grep("[", name_vector, fixed = TRUE)] <- 
-  #   substr(name_vector[grep("[", name_vector, fixed = TRUE)], 1, 
-  #          regexpr("[", name_vector[grep("[", name_vector, fixed = TRUE)], 
+  #
+  # name_vector[grep("[", name_vector, fixed = TRUE)] <-
+  #   substr(name_vector[grep("[", name_vector, fixed = TRUE)], 1,
+  #          regexpr("[", name_vector[grep("[", name_vector, fixed = TRUE)],
   #                  fixed=TRUE)-1)
-  # 
-  # name_vector[grep(" \"", name_vector, fixed = TRUE)] <- 
-  #   substr(name_vector[grep(" \"", name_vector, fixed = TRUE)], 1, 
-  #          regexpr(" \"", name_vector[grep(" \"", name_vector, fixed = TRUE)], 
+  #
+  # name_vector[grep(" \"", name_vector, fixed = TRUE)] <-
+  #   substr(name_vector[grep(" \"", name_vector, fixed = TRUE)], 1,
+  #          regexpr(" \"", name_vector[grep(" \"", name_vector, fixed = TRUE)],
   #                  fixed=TRUE)-1)
-  # 
-  # name_vector[grep(" \'", name_vector, fixed = TRUE)] <- 
-  #   substr(name_vector[grep(" \'", name_vector, fixed = TRUE)], 1, 
-  #          regexpr(" \'", name_vector[grep(" \'", name_vector, fixed = TRUE)], 
+  #
+  # name_vector[grep(" \'", name_vector, fixed = TRUE)] <-
+  #   substr(name_vector[grep(" \'", name_vector, fixed = TRUE)], 1,
+  #          regexpr(" \'", name_vector[grep(" \'", name_vector, fixed = TRUE)],
   #                  fixed=TRUE)-1)
   
   ## Record improper species names as idenitfied by taxa modifiers
   if (improper.species.list){
     improper_species <- name_vector[(
-      Reduce(union, 
+      Reduce(union,
              list(
                grep("Unplaced", name_vector, fixed = TRUE),
                grep("?", name_vector, fixed = TRUE),
@@ -93,8 +93,8 @@ remove_improper_names <- function(name_vector,
   
   ##  Set to NA all names with taxa modifiers (this list keeps subspecies and variety)
   name_vector[(
-    Reduce(union, 
-           list(        
+    Reduce(union,
+           list(
              grep("Unplaced", name_vector, fixed = TRUE),
              grep("?", name_vector, fixed = TRUE),
              grep(" ex ", name_vector, fixed = TRUE),
@@ -142,7 +142,7 @@ remove_improper_names <- function(name_vector,
   
   ## [Optional] Remove single word names (likely higher taxa without species suffix)
   if (!allow.higher.taxa){
-    ##  set all names witout a space to NA, which should work because we fixed double and trailing space 
+    ##  set all names witout a space to NA, which should work because we fixed double and trailing space
     # name_vector[grep(" ", name_vector, fixed = TRUE, invert = TRUE)] <- NA
     
     ## record names with less than or equal to one word
@@ -165,20 +165,20 @@ remove_improper_names <- function(name_vector,
   # }
   
   if (length(improper_species) != 0){
-    message(cat("# Improper names (indicated by NAs) in updated species list: "), 
+    message(cat("# Improper names (indicated by NAs) in updated species list: "),
             length(improper_species))
     
     ## Print messages on screen
     message(cat("Original number of species: "),
             originalN)
-    message(cat("Number of species removed: "), 
+    message(cat("Number of species removed: "),
             length(improper_species) + sp_incomplete_n)
-    message(cat("Number of species retained: "), 
+    message(cat("Number of species retained: "),
             length(name_vector))
     message(cat("Proprotion of species removed: "),
             (length(improper_species)+ sp_incomplete_n)/originalN)
     message(cat("Is #species retained = #species in raw list - #species removed? : "),
-            length(name_vector) == (length(name_vector_raw) - 
+            length(name_vector) == (length(name_vector_raw) -
                                       (length(improper_species)+ sp_incomplete_n)))
     
   }else {

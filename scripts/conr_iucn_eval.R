@@ -1,6 +1,6 @@
 ## ConR::IUCN.eval function for parallel processing
 
-conr_iucn_eval <- function(species_filename, basemap_path, working_dir, iucn_outpath) {
+conr_iucn_eval <- function(species_filename, basemap_path, working_dir, iucn_outpath, shpfiles = TRUE) {
   
   ## Set wd for IUCN-eval function
   setwd(working_dir)
@@ -25,7 +25,7 @@ conr_iucn_eval <- function(species_filename, basemap_path, working_dir, iucn_out
                    DrawMap = TRUE,
                    write_file_option = "csv", 
                    file_name = spname,
-                   export_shp = TRUE, 
+                   export_shp = shpfiles, 
                    write_shp = TRUE, 
                    write_results = TRUE,
                    showWarnings = FALSE)

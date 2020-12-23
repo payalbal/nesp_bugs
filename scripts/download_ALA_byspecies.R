@@ -1,4 +1,6 @@
-## DOWNLOAD ALA DATA BY SPECIES NAMES
+## References:
+## https://cloud.r-project.org/web/packages/ALA4R/ALA4R.pdf
+
 
 ## Set working environment ####
 rm(list = ls())
@@ -27,7 +29,7 @@ nodatalog <- file.path(output_dir, "nodataspecies_log.txt")
 writeLines(c("species0"), nodatalog)
 
 
-## Load AFD taxonnomic checklist ####
+## Load AFD taxonomic checklist ####
 afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
 afd_species <- unique(afd_taxonomy$VALID_NAME)
 length(afd_species)
@@ -48,18 +50,18 @@ start.time <- Sys.time()
 invisible(future.apply::future_lapply(afd_species,
                                       function(x){
                                         tmp <- tryCatch(expr = get_ala_spdata(x,
-                                                                              extra_fields = TRUE,
-                                                                              specimens_only = TRUE,
-                                                                              remove_duplicates = TRUE,
-                                                                              dst = ala_dir,
-                                                                              save.map = TRUE,
-                                                                              reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
-                                                                              email = paste0("bal.payal+", sample(1:100, 1), "@gmail.com")),
-                                                        error = function(e){ 
+                                                                            extra_fields = TRUE,
+                                                                            specimens_only = TRUE,
+                                                                            remove_duplicates = TRUE,
+                                                                            dst = ala_dir,
+                                                                            save.map = TRUE,
+                                                                            reg.mask.file = file.path(output_dir, "ausmask_WGS.tif"),
+                                                                            email = paste0("bal.payal+", sample(1:100, 1), "@gmail.com")),
+                                                        error = function(e){
                                                           print(paste("\nNot run: no records for", x))
                                                           
                                                           cat(paste(x, "\n"),
-                                                              file = nodatalog, 
+                                                              file = nodatalog,
                                                               append = TRUE)
                                                         })
                                       }))
@@ -88,7 +90,7 @@ ala_fields("occurrence", as_is=TRUE)
 names(ala_fields("occurrence"))
 ala_fields("occurrence")$name
 "assertions" %in% ala_fields("occurrence")$name
-ala_fields()$name[grep("assertions", ala_fields("occurrence")$name)] 
+ala_fields()$name[grep("assertions", ala_fields("occurrence")$name)]
 ala_fields()$description[grep("assertions", ala_fields("occurrence")$name)]
 
 

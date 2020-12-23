@@ -197,13 +197,13 @@ message(cat("Number of .csv output files created from IUCN.eval(): "),
         length(csvfiles))
 
 rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
-                       full.names = TRUE, all.files = TRUE)
+                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of .rds output files created from IUCN.eval(): "),
         length(rdsfiles))
 
 IUCNshpfiles <- list.files(file.path(polygons_dir, "shapesIUCN"), 
-                           pattern = ".shp$", 
-                           full.names = TRUE, all.files = TRUE)
+                       pattern = ".shp$", 
+                       full.names = TRUE, all.files = TRUE)
 message(cat("Number of .shp output files created from IUCN.eval(): "),
         length(IUCNshpfiles))
 
@@ -226,14 +226,14 @@ spfiles_sp <- gsub("_masked$", "", spfiles_sp)
 spfiles_sp[!spfiles_sp %in% polyfiles_sp]
 gsub("_masked", "", basename(tools::file_path_sans_ext(errorfiles))) %in% spfiles_sp[!spfiles_sp %in% polyfiles_sp]
 
-# errorsp <- c("Mecyclothorax (Mecyclothorax) howei",
-#              "Schizognathus viridiaeneus",
-#              "Diemodynerus saucius",
-#              "Pnirsus notaticollis",
-#              "Pheroliodes monteithi",
-#              "Helina micans",
-#              "Torresitrachia leichhardti",
-#              "Melanozosteria lentiginosa")
+  # errorsp <- c("Mecyclothorax (Mecyclothorax) howei",
+  #              "Schizognathus viridiaeneus",
+  #              "Diemodynerus saucius",
+  #              "Pnirsus notaticollis",
+  #              "Pheroliodes monteithi",
+  #              "Helina micans",
+  #              "Torresitrachia leichhardti",
+  #              "Melanozosteria lentiginosa")
 
 
 ## >> Batch rerun for species showing errors ####
@@ -253,10 +253,10 @@ system.time(invisible(mclapply(errorfiles,
                                working_dir = working_error_dir,
                                iucn_outpath = polygons_error_dir,
                                mc.cores = mc.cores)))
-## >> Warning message:
-##    In mclapply(errorfiles, conr_iucn_eval, basemap_path = basemap_file,:
-##    scheduled cores 4, 15, 21, 1, 86, 115, 99, 63, 30, 58, 52, 49, 80, 55 
-##    encountered errors in user code, all values of the jobs will be affected
+  ## >> Warning message:
+  ##    In mclapply(errorfiles, conr_iucn_eval, basemap_path = basemap_file,:
+  ##    scheduled cores 4, 15, 21, 1, 86, 115, 99, 63, 30, 58, 52, 49, 80, 55 
+  ##    encountered errors in user code, all values of the jobs will be affected
 
 ## Check # files created in error directory
 csvfiles <- list.files(polygons_error_dir, pattern = ".csv$",
@@ -328,22 +328,22 @@ basename(errorfiles[eidx[c(2, 5, 10)]])
 
 ## >> Copy files ####
 csvfiles2 <- list.files(polygons_error_dir, pattern = ".csv$",
-                        full.names = TRUE, all.files = TRUE)
+                       full.names = TRUE, all.files = TRUE)
 message(cat("Number of .csv output files created from IUCN.eval(): "),
         length(csvfiles2))
 rdsfiles2 <- list.files(polygons_error_dir, pattern = ".rds$", 
-                        full.names = TRUE, all.files = TRUE)
+                       full.names = TRUE, all.files = TRUE)
 message(cat("Number of .rds output files created from IUCN.eval(): "),
         length(rdsfiles2))
 
 IUCNshpfiles2 <- list.files(file.path(polygons_error_dir, "shapesIUCN"), 
-                            pattern = ".dbf$", 
-                            full.names = TRUE, all.files = TRUE)
+                           pattern = ".dbf$", 
+                           full.names = TRUE, all.files = TRUE)
 message(cat("Number of .shp output files created from IUCN.eval(): "),
         length(IUCNshpfiles2))
 
 pngfiles2 <- list.files(polygons_error_dir, pattern = "png$", recursive = TRUE, 
-                        full.names = TRUE, all.files = TRUE)
+                       full.names = TRUE, all.files = TRUE)
 message(cat("Number of .png map files created from IUCN.eval(): "),
         length(pngfiles2))
 
@@ -393,7 +393,8 @@ pngfiles <- list.files(polygons_dir, pattern = "png$", recursive = TRUE,
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of .png map files created from IUCN.eval(): "),
         length(pngfiles))
-
+write.csv(pngfiles, file.path(output_dir, "png_filenames.csv"), 
+          row.names = FALSE)
 
 
 ## IV. Save IUCN.eval() outputs ####
@@ -405,6 +406,18 @@ out <- do.call("rbind", lapply(csvfiles , read.csv))
 dim(out)
 setorder(out, EOO, AOO)
 out <- as.data.table(out)
+
+## Add rows for species with errors
+basename(errorfiles[eidx[c(2, 5, 10)]])
+dat <- do.call("rbind", lapply(errorfiles[eidx[c(2, 5, 10)]], readRDS))
+r1 <- c(unique(dat$scientificName)[1], rep(NA, 9))
+r2 <- c(unique(dat$scientificName)[2], rep(NA, 9))
+r3 <- c(unique(dat$scientificName)[3], rep(NA, 9))
+r <- data.table(rbind(r1, r2, r3))
+names(r) = names(out)
+out <- rbind(out, r)
+
+## Save outputs
 write.csv(out, file = file.path(output_dir, "ala_polygons_areas.csv"), 
           row.names = FALSE)
 

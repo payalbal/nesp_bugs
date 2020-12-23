@@ -26,12 +26,12 @@ source(file.path(getwd(), "nesp_bugs/scripts/gdal_calc.R"))
 
 
 ## NOAA mask with islands + terriroties ---- ####
-## File: Topo250kv3AMBIS3islBlnNoaa is a blend on AU jursidiction data with NOAA coastline
-## Auhtor: Keith Hayes, Data61, CSIRO
-## Sources: 
-## AMSIS http://www.ga.gov.au/scientific-topics/marine/jurisdiction/amsis
-## NOAA https://www.ngdc.noaa.gov/mgg/shorelines/ 
-## See data doc for  QGIS processing on file Topo250kv3AMBIS3islBlnNoaa > aus_lands.gpkg
+  ## File: Topo250kv3AMBIS3islBlnNoaa is a blend on AU jursidiction data with NOAA coastline
+  ## Auhtor: Keith Hayes, Data61, CSIRO
+  ## Sources: 
+  ## AMSIS http://www.ga.gov.au/scientific-topics/marine/jurisdiction/amsis
+  ## NOAA https://www.ngdc.noaa.gov/mgg/shorelines/ 
+  ## See data doc for  QGIS processing on file Topo250kv3AMBIS3islBlnNoaa > aus_lands.gpkg
 auslands <- rgdal::readOGR(file.path(mask_data, "aus_lands.gpkg"))
 unique(auslands$FEATTYPE)
 

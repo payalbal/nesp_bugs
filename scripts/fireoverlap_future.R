@@ -10,8 +10,8 @@ rm(list = ls())
 gc()
 # system("ps")
 # system("pkill -f R")
-x <- c("data.table", "sp", "raster", "rgdal", "gdalUtils", "rgeos", "foreach",
-       "doParallel")
+x <- c("data.table", "sp", "raster", "rgdal", "gdalUtils", "rgeos", 
+       "future", "future.apply", "parallel")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -23,18 +23,17 @@ if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
 overlap_dir = file.path(output_dir, "overlaps")
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
-source("/tempdata/workdir/nesp_bugs/")
+source("/tempdata/workdir/nesp_bugs/scripts/overlap.R")
 
+## Fire overlap for species WITH EOO polygons  ####
 ## Load in fire severity raster (re-classed) and get unique classes
-fire_file <- file.path(output_dir, "fire", "severity3_eqar250.tif")
-fire_severity <- raster(fire_file)
+fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
 fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
-## Load species rds file
-species_polys <- readRDS(file.path(output_dir, "ala_EOO.rds"))
-species_names <- names(species_polys)
-
+## Load in species rds
+species_maps <- readRDS(file.path(output_dir, "ala_EOO.rds"))
+polygon_list <- names(species_maps)[1:10]
 
 
 ## Run overlap analysis ####
@@ -47,10 +46,10 @@ writeLines(c(""), errorlog)
 system.time(
   suppressWarnings(
     future.apply::future_lapply(
-      species_names,
+      polygon_list,
       function(x){
         tmp <- tryCatch(expr = overlap(species_name = x,
-                                       rds_file = file.path(output_dir, "ala_EOO.rds"),
+                                       species_poly = species_maps[[x]],
                                        shapefile_dir = shapefile_dir,
                                        fire_vals = fire_vals,
                                        fire_classes = fire_classes, 
@@ -66,24 +65,24 @@ system.time(
 
 
 
-## Check files ####
-csvfiles <- list.files(overlap_dir, pattern = ".csv$",
-                       full.names = TRUE, all.files = TRUE)
-message(cat("Number of .csv output files created from IUCN.eval(): "),
-        length(csvfiles))
-
-## Combine outputs ####
-out <- do.call("rbind", lapply(csvfiles , fread))
-dim(out)
-setorder(out, Species)
-out <- as.data.table(out)
-write.csv(out, file = file.path(output_dir, "ala_EOO_fireoverlaps.csv"), 
-          row.names = FALSE)
-
-message(cat("#species with EOOs: "),
-        nrow(out[!is.na(EOO)]))
-message(cat("#species without EOOs: "),
-        nrow(out[is.na(EOO)]))
-message(cat("max #records for species without EOOs: "),
-        max(out[is.na(EOO)]$Nbe_unique_occ.))
+# ## Check files ####
+# csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+#                        full.names = TRUE, all.files = TRUE)
+# message(cat("Number of .csv output files created from IUCN.eval(): "),
+#         length(csvfiles))
+# 
+# ## Combine outputs ####
+# out <- do.call("rbind", lapply(csvfiles , fread))
+# dim(out)
+# setorder(out, Species)
+# out <- as.data.table(out)
+# write.csv(out, file = file.path(output_dir, "ala_EOO_fireoverlaps.csv"), 
+#           row.names = FALSE)
+# 
+# message(cat("#species with EOOs: "),
+#         nrow(out[!is.na(EOO)]))
+# message(cat("#species without EOOs: "),
+#         nrow(out[is.na(EOO)]))
+# message(cat("max #records for species without EOOs: "),
+#         max(out[is.na(EOO)]$Nbe_unique_occ.))
 

@@ -11,18 +11,18 @@ library(assertthat)
 
 
 
-gdalcalc = function(calc, 
+gdalcalc = function(calc,
                     infile,
                     outfile,
-                    bands = 1, 
-                    NoDataValue, 
-                    type, 
-                    format, 
-                    creation, 
+                    bands = 1,
+                    NoDataValue,
+                    type,
+                    format,
+                    creation,
                     co,
-                    allBands, 
-                    overwrite, 
-                    debug, 
+                    allBands,
+                    overwrite,
+                    debug,
                     quiet,
                     # Additional parameters
                     output_Raster = FALSE,
@@ -74,11 +74,11 @@ gdalcalc = function(calc,
   }
   
   
-  # if (verbose) 
+  # if (verbose)
   #   message("Checking gdal_installation...")
-  # gdal_setInstallation(ignore.full_scan = ignore.full_scan, 
+  # gdal_setInstallation(ignore.full_scan = ignore.full_scan,
   #                      verbose = verbose)
-  # if (is.null(getOption("gdalUtils_gdalPath"))){ 
+  # if (is.null(getOption("gdalUtils_gdalPath"))){
   #   message(character(is.null(getOption("gdalUtils_gdalPath"))))
   #   warning('cannot find gdal installation')
   #   return(list('didnt get past utils gdalPath', getOption('gdalUtils_gdalPath')))
@@ -88,17 +88,17 @@ gdalcalc = function(calc,
   
   executable = 'gdal_calc.py'
   
-  parameter_order = c('calc', c(LETTERS),c(band_vec), c('outfile', 'NoDataValue', 'type', 'format', 'creation', 
+  parameter_order = c('calc', c(LETTERS),c(band_vec), c('outfile', 'NoDataValue', 'type', 'format', 'creation',
                                                         'co', 'allBands', 'overwrite', 'debug', 'quiet'))
   
-  parameter_variables = list(logical= list(varnames = c('overwrite', 'debug', 'quiet')), 
+  parameter_variables = list(logical= list(varnames = c('overwrite', 'debug', 'quiet')),
                              scalar= list(varnames=c(c(band_vec), 'NoDataValue')),
                              character= list(varnames=c('calc', c(LETTERS), c ('outfile',
-                                                                               'type', 'format', 'creation', 
+                                                                               'type', 'format', 'creation',
                                                                                'co', 'allBands')))
   )
   parameter_noflags = c()
-  parameter_double_dash = c('calc',c(band_vec), 'outfile', 'NoDataValue', 'type', 'format', 'creation', 
+  parameter_double_dash = c('calc',c(band_vec), 'outfile', 'NoDataValue', 'type', 'format', 'creation',
                             'co', 'allBands', 'overwrite', 'debug', 'quiet')
   
   # parameter_values = list(A='fra_ 15 .tif', calc = 'A+100', outfile = '/home/garberj/tests_scripts/fra_15_plus100.tif')
@@ -113,7 +113,7 @@ gdalcalc = function(calc,
                          python_util = TRUE,
                          verbose = FALSE)
   
-  if (verbose) 
+  if (verbose)
     message(paste("GDAL command being used:", cmd))
   cmd_output <- system(cmd, intern = TRUE)
   
@@ -138,11 +138,11 @@ gdalmask = function(infile, mask, outfile, output_Raster = FALSE, overwrite=TRUE
   # if (verbose) {
   #   message("Checking gdal_installation...")
   # }
-  # 
-  # gdal_setInstallation(ignore.full_scan = ignore.full_scan, 
+  #
+  # gdal_setInstallation(ignore.full_scan = ignore.full_scan,
   #                      verbose = verbose)
-  # 
-  # if (is.null(getOption("gdalUtils_gdalPath"))){ 
+  #
+  # if (is.null(getOption("gdalUtils_gdalPath"))){
   #   message(character(is.null(getOption("gdalUtils_gdalPath"))))
   #   warning('cannot find gdal installation')
   #   return(list('didnt get past utils gdalPath', getOption('gdalUtils_gdalPath')))
@@ -166,7 +166,7 @@ gdalmask = function(infile, mask, outfile, output_Raster = FALSE, overwrite=TRUE
 
 
 
-gdalfillnodata = function(srcfile, 
+gdalfillnodata = function(srcfile,
                           dstfile,
                           nomask,
                           mask,
@@ -189,11 +189,11 @@ gdalfillnodata = function(srcfile,
   
   parameter_values <- as.list(environment())
   
-  # if (verbose) 
+  # if (verbose)
   #   message("Checking gdal_installation...")
-  # gdal_setInstallation(ignore.full_scan = ignore.full_scan, 
+  # gdal_setInstallation(ignore.full_scan = ignore.full_scan,
   #                      verbose = verbose)
-  # if (is.null(getOption("gdalUtils_gdalPath"))){ 
+  # if (is.null(getOption("gdalUtils_gdalPath"))){
   #   message(character(is.null(getOption("gdalUtils_gdalPath"))))
   #   warning('cannot find gdal installation')
   #   return(list('didnt get past utils gdalPath', getOption('gdalUtils_gdalPath')))
@@ -221,7 +221,7 @@ gdalfillnodata = function(srcfile,
   # srcfile [-nomask] [-mask filename] [-of format] [dstfile]
   
   parameter_order = c('q','md','si','b','srcfile','nomask','mask','of', 'dstfile')
-  parameter_variables = list(logical= list(varnames = c('nomask', 'q')), 
+  parameter_variables = list(logical= list(varnames = c('nomask', 'q')),
                              scalar= list(varnames=c('b', 'md', 'si')),
                              character= list(varnames=c('srcfile', 'dstfile','of', 'mask')))
   parameter_noflags = c('srcfile', 'dstfile')
@@ -239,7 +239,7 @@ gdalfillnodata = function(srcfile,
                          python_util = TRUE,
                          verbose = FALSE)
   
-  if (verbose) 
+  if (verbose)
     message(paste("GDAL command being used:", cmd))
   cmd_output <- system(cmd, intern = TRUE)
   
@@ -264,46 +264,46 @@ gdalfillnodata = function(srcfile,
 #  Archived garbage will deal with it later
 #plot(fra)
 # gdal_rasterize()
-# 
+#
 # plot(out_fr_1p5min)
-# 
+#
 # plot(out_fr_1p5min2)
-# 
+#
 # class(out_fr_1p5)
 # parameter_values$infile = parameter_values$A
-# 
+#
 # parameter_values$A = NULL
 # parameter_values
 # plot(raster('fra_ 15 .tif'))
-# 
+#
 # test_func=function(one=1) print(as.list(environment()))
 # getwd()
 # test_func()
-# 
+#
 # system('gdalwarp -h')
-# 
-# 
+#
+#
 # extent = c(0,50,0,50)
 # resolution = c(10, 10)
 # inpath = 'dist_calc_wgs.tif'
 # outpath = 'test2.tif'
 # test_com = sprintf('gdalwarp  -of gtiff -te %f %f %f %f -tr %f %f %s %s',
 #                    extent[1],extent[3],extent[2],extent[4], resolution[1], resolution[2], inpath, outpath)
-# 
+#
 # system2(test_com, stdout=TRUE)
 # test_com
 # test = list(string1 = 'string', int1 = 3, float1 = )
-# 
+#
 # type_list = list()
 # for(name in names(test)){
-#   
-#   
+#
+#
 # }
-# 
-# #Idea just bring in GdalUtils command builder to build commands, will have to change a bit what 
+#
+# #Idea just bring in GdalUtils command builder to build commands, will have to change a bit what
 # #include a list of all the -- and - flags,
-# # 
-# 
+# #
+#
 # gdal_cmd_builder()
 
 

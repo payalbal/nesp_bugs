@@ -18,46 +18,45 @@ rm(x)
 ## File paths and folders
 bugs_data = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_data, "outputs")
+
 shapefile_dir = file.path(output_dir, "species_shapefiles")
-if(!dir.exists(shapefile_dir)){
-  dir.create(shapefile_dir)
-}
+if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
 
-# polygons_dir = file.path(output_dir,"polygons")
-# IUCNshpfiles <- list.files(file.path(polygons_dir, "shapesIUCN"), 
-#                            pattern = ".shp$", 
-#                            full.names = TRUE, all.files = TRUE)
+overlap_dir = file.path(output_dir, "polygon_overlap")
+if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
+
+source("/tempdata/workdir/nesp_bugs/scripts/polygon_overlap.R")
+
+    # polygons_dir = file.path(output_dir,"polygons")
+    # IUCNshpfiles <- list.files(file.path(polygons_dir, "shapesIUCN"), 
+    #                            pattern = ".shp$", 
+    #                            full.names = TRUE, all.files = TRUE)
 
 
-# ## Pre-processing fire severity raster - to run once only #####
-# if(!dir.exists(file.path(bugs_data, "outputs", "fire"))){
-#   dir.create(file.path(bugs_data, "outputs", "fire"))
-# }
-# 
-# ## Reproject raster with GDAL system call
-# infile <- file.path(bugs_data, "fire/AUS_GEEBAM_Fire_Severity_NIAFED20200224_QGIS/AUS_GEEBAM_Fire_Severity_QGIS_NIAFED20200224.tif")
-# outfile <- gsub(".tif", "_reproj.tif", infile)
-# system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 ",
-#               "-t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ", infile, " ", outfile))
-# gdalUtils::gdalinfo(outfile)
-# 
-# # Reclassify values in raster
-# infile <- outfile
-# outfile <- file.path(output_dir, "fire", "severity3_eqar250.tif")
-# system(paste0("gdal_calc.py -A ", infile,
-#               " --calc='(A==1)*1 + ((A==2)+(A==3))*2 + ((A==4)+(A==5))*3' --NoDataValue=0",
-#               " --outfile=", outfile))
-# gdalUtils::gdalinfo(outfile)
+  # ## Pre-processing fire severity raster - to run once only #####
+  # if(!dir.exists(file.path(bugs_data, "outputs", "fire"))){
+  #   dir.create(file.path(bugs_data, "outputs", "fire"))
+  # }
+  # 
+  # ## Reproject raster with GDAL system call
+  # infile <- file.path(bugs_data, "fire/AUS_GEEBAM_Fire_Severity_NIAFED20200224_QGIS/AUS_GEEBAM_Fire_Severity_QGIS_NIAFED20200224.tif")
+  # outfile <- gsub(".tif", "_reproj.tif", infile)
+  # system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 ",
+  #               "-t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ", infile, " ", outfile))
+  # gdalUtils::gdalinfo(outfile)
+  # 
+  # # Reclassify values in raster
+  # infile <- outfile
+  # outfile <- file.path(output_dir, "fire", "severity3_eqar250.tif")
+  # system(paste0("gdal_calc.py -A ", infile,
+  #               " --calc='(A==1)*1 + ((A==2)+(A==3))*2 + ((A==4)+(A==5))*3' --NoDataValue=0",
+  #               " --outfile=", outfile))
+  # gdalUtils::gdalinfo(outfile)
 
 
 
 ## Fire overlap for species WITH EOO polygons  ####
-## Load in fire severity raster (re-classed) and get unique classes
-fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
-fire_vals <- fire_severity[]
-fire_classes <- sort(unique(na.omit(fire_vals)))
-
-## Load in species rds
+## >> Load in spdf data for species with EOO ####
 species_maps <- readRDS(file.path(output_dir, "ala_EOO.rds"))
 polygon_list <- names(species_maps)
 
@@ -67,55 +66,87 @@ polygon_list <- names(species_maps)
 # ## easiest to use rds
 # polygon_list <- tools::file_path_sans_ext(basename(IUCNshpfiles))
 
-## Run overlap analysis in parallel: doMC ####
+## >> Load in fire severity raster (re-classed) and get unique classes ####
+fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
+fire_vals <- fire_severity[]
+fire_classes <- sort(unique(na.omit(fire_vals)))
+
+## Batch specification
+polygon_list <- polygon_list[2501:5000]
+
+## >> Run overlap analysis in parallel: doMC ####
 registerDoMC(future::availableCores()-2)
-system.time(areas <- foreach(polys = polygon_list, 
-                             .combine = rbind, 
-                             .errorhandling = "remove",
-                             .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
-                               
-                               ## write spatial data to disk if coming from RDS file
-                               writeOGR(species_maps[[polys]], dsn = shapefile_dir, layer = polys, driver = "ESRI Shapefile", overwrite_layer = TRUE)
-                               
-                               ## reproject species boundaries to match fire severity raster
-                               system(paste0("gdal_rasterize -at -burn 1 -ot Byte -tr .0025 .0025 -l ",
-                                             polys, " ",
-                                             file.path(shapefile_dir, polys), ".shp ",
-                                             file.path(shapefile_dir, polys), ".tif"))
-                               
-                               system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 -s_srs 'EPSG:4326' -t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ",
-                                             file.path(shapefile_dir, polys), ".tif ",
-                                             file.path(shapefile_dir, polys), "_p.tif"))
-                               
-                               ## Create table of areas within each fire class
-                               species_map <- raster(paste0(file.path(shapefile_dir, polys), "_p.tif"))
-                               
-                               dt <- data.table("species_map" = species_map[],
-                                                "fire_severity" = fire_vals)
-                               
-                               df <- data.frame(matrix(ncol = length(fire_classes) + 3))
-                               df[ , 1] <- polys
-                               df[ , -c(1, ncol(df)-1, ncol(df))] <- sapply(fire_classes, FUN = function(x) dt[species_map == 1 & fire_severity == x, length(fire_severity) * 250 * 250 / 1000000])
-                               df[ , ncol(df)-1] <- rowSums(df[, -c(1,ncol(df)-1, ncol(df))])
-                               df[ , ncol(df)] <- dt[species_map == 1, length(species_map)* 250 * 250 / 1000000]
-                               colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), "Total_Overlap", "Species_Polygon")
-                               
-                               file.remove(file.path(shapefile_dir, dir(path = shapefile_dir)))
-                               
-                               df
-                             })
+system.time(log <- foreach(polys = polygon_list, 
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
+                      
+                      polygon_overlap(species_name = polys,
+                              species_poly = species_maps[[polys]],
+                              shapefile_dir = shapefile_dir,
+                              fire_vals = fire_vals,
+                              fire_classes = fire_classes, 
+                              outdir = overlap_dir)
+                    })
 
 
-## Save outputs
-write.csv(areas, file = file.path(output_dir, "ala_EOO_fireoverlap.csv"), row.names = FALSE)
+  # ## Error checking ####
+  # ## >> Display results summary ####
+  # log
+  # csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+  #                        full.names = TRUE, all.files = TRUE)
+  # message(cat("Number of input species: "),
+  #         length(polygon_list))
+  # message(cat("Number of output files: "),
+  #         length(csvfiles))
+  # 
+  # ## >> Find missing species from outputs ####
+  # csvnames <- tools::file_path_sans_ext(basename(csvfiles))
+  # error1_list <- error_list <- polygon_list[!polygon_list %in% csvnames]
+  #
+  #
+  # ## Reruns ####
+  # ## Repeat this till most of the errors are fixed
+  # ## Errors seem to be an artefact of the system rather than problem with data/code
+  # rm(log)
+  # if(length(error_list) <= future::availableCores()-2) {
+  #   registerDoMC(length(error_list))
+  # } else{
+  #   registerDoMC(future::availableCores()-2)
+  # }
+  # system.time(log <- foreach(polys = error_list,
+  #                            .combine = rbind,
+  #                            .errorhandling = "pass",
+  #                            .packages = c('sp', 'raster',
+  #                                          'rgdal', 'data.table')) %dopar%{
+  #
+  #                                            polygon_overlap(species_name = polys,
+  #                                                    species_poly = species_maps[[polys]],
+  #                                                    shapefile_dir = shapefile_dir,
+  #                                                    fire_vals = fire_vals,
+  #                                                    fire_classes = fire_classes,
+  #                                                    outdir = overlap_dir)
+  #                                          })
+  #
+  # csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+  #                        full.names = TRUE, all.files = TRUE)
+  # message(cat("Number of input species: "),
+  #         length(polygon_list))
+  # message(cat("Number of output files: "),
+  #         length(csvfiles))
+  # csvnames <- basename(tools::file_path_sans_ext(csvfiles))
+  # error_list[!error_list %in% csvnames]
+  #
+  # ## Save output table ####
+  # csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+  #                        full.names = TRUE, all.files = TRUE)
+  # out <- do.call("rbind", lapply(csvfiles , fread))
+  # setorder(out, Species)
+  # out <- as.data.table(out)
+  # write.csv(out, file = file.path(output_dir, "EOO_fireoverlap.csv"), row.names = FALSE)
+  # file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
 
 
-# ## Errors - rerun ####
-# polygon_list %in% areas$Species...
-# 
-# 
-# ## Save outputs
-# write.csv(areas, file = file.path(output_dir, "ala_EOO_fireoverlap_error1.csv"), row.names = FALSE)
 
 
 
