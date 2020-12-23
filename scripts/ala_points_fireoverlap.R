@@ -46,8 +46,8 @@ x <- gsub("_masked", "", x)
 datfiles <- datfiles[x %in% points_list] ## subset datfiles for all IUCN species
 
 ## >> Load fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(nesp_output_dir, "fire", "severity3_eqar250.tif"))
-fire_classes <- sort(unique(na.omit(fire_vals)))
+fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
+fire_classes <- sort(unique(na.omit(fire_severity[])))
 
 ## Function parameters
 wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
@@ -76,7 +76,7 @@ log
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of input species: "),
-        length(polygon_list))
+        length(datfiles))
 message(cat("Number of output files: "),
         length(csvfiles))
 
