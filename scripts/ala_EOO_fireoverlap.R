@@ -72,7 +72,9 @@ fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
 ## Batch specification
-polygon_list <- polygon_list[2501:5000]
+# batches <- seq(0, length(polygon_list), 1000)
+# polygon_list <- polygon_list[15001:20000]
+
 
 ## >> Run overlap analysis in parallel: doMC ####
 registerDoMC(future::availableCores()-2)
@@ -89,19 +91,21 @@ system.time(log <- foreach(polys = polygon_list,
                               outdir = overlap_dir)
                     })
 
+  # unlink(shapefile_dir, recursive = TRUE)
+
 
   # ## Error checking ####
   # ## >> Display results summary ####
   # log
-  # csvfiles <- list.files(overlap_dir, pattern = ".csv$",
-  #                        full.names = TRUE, all.files = TRUE)
+  csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+                         full.names = TRUE, all.files = TRUE)
   # message(cat("Number of input species: "),
   #         length(polygon_list))
-  # message(cat("Number of output files: "),
-  #         length(csvfiles))
+  message(cat("Number of output files: "),
+          length(csvfiles))
   # 
   # ## >> Find missing species from outputs ####
-  # csvnames <- tools::file_path_sans_ext(basename(csvfiles))
+  csvnames <- tools::file_path_sans_ext(basename(csvfiles))
   # error1_list <- error_list <- polygon_list[!polygon_list %in% csvnames]
   #
   #

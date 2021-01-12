@@ -71,7 +71,6 @@ system.time(log <- foreach(species_dat = datfiles,
 
 
 ## Error checking ####
-## >> Display results summary ####
 log
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
@@ -80,16 +79,40 @@ message(cat("Number of input species: "),
 message(cat("Number of output files: "),
         length(csvfiles))
 
-## >> Find missing species from outputs ####
-csvnames <- tools::file_path_sans_ext(basename(csvfiles))
-error1_list <- error_list <- polygon_list[!polygon_list %in% csvnames]
+
+## Save output table ####
+out <- do.call("rbind", lapply(csvfiles , fread))
+setorder(out, Species)
+out <- as.data.table(out)
+
+message(cat("Check if #points overlapping with fire is always <= Total # points for species: "),
+        all(out$Total_Overlap <= out$Occurrence_Points))
+
+write.csv(out, file = file.path(output_dir, "Points_fireoverlap.csv"), 
+          row.names = FALSE)
+
+## Remove files ####
+file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
 
 
-## Reruns ####
-...get code from ala_EOO_foreobverlap.R
+## Summarize outputs
+
+message("Total number of species: ")
+nrow(out)
+
+message("Number of species showing overlap: ")
+out[, .N, by = Total_Overlap]
+
+message("Species showing 100% fire overlap: ")
+length(out[Total_Overlap == Occurrence_Points]$Species)
+
+message("Species showing 50% fire overlap: ")
+length(out[Total_Overlap == (Occurrence_Points/2)]$Species)
+
+message("Species showing no fire overlap: ")
+length(out[Total_Overlap == 0]$Species)
 
 
 
 
-## >> Error checking ####
-all(df$Total_Overlap <= df$Occurrence_Points)
+
