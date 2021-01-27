@@ -34,7 +34,7 @@ points_list <- fread(file.path(output_dir, "ala_noEOOspecies.csv"))
 points_list <- points_list$x
 length(points_list)
 
-## Check number of records for these species inn UCN.eval outputs
+## Check number of records for these species in UCN.eval outputs
 temp <- fread(file.path(output_dir, "ala_polygons_areas.csv"))
 dim(temp[is.na(EOO)])
 summary(temp[is.na(EOO)]$Nbe_unique_occ.)
@@ -80,23 +80,72 @@ message(cat("Number of output files: "),
         length(csvfiles))
 
 
-## Save output table ####
+## Output table ####
+## Merge csv files
 out <- do.call("rbind", lapply(csvfiles , fread))
-setorder(out, Species)
+out <- fread(file.path(output_dir, "Points_fireoverlap.csv"))
+names(out)[1] <- "SpeciesName"
+setorder(out, SpeciesName)
 out <- as.data.table(out)
+setkey(out, "SpeciesName")
 
 message(cat("Check if #points overlapping with fire is always <= Total # points for species: "),
         all(out$Total_Overlap <= out$Occurrence_Points))
 
+## Extract taxonomic information for species
+ala <- readRDS(file.path(output_dir, "clean2_ala_2020-10-28.rds"))
+setkey(ala, "spfile")
+
+message(cat("Are all species in output table found in cleaned ALA data? "),
+        length(out$Species) == length(which(out$Species %in% ala$spfile)))
+
+taxinfo <- c("phylum", "class", "order", "family", 
+             "genus", "species", "subspecies")
+temp <- data.table()
+redo <- c()
+for (sp in out$Species){
+  if (nrow(unique((ala[.(sp), ..taxinfo]))) > 1){
+    
+    warning(paste0("More than 1 unique taxon info found for ", sp))
+    redo <- c(redo, sp)
+    
+  } else {
+    x <- unique((ala[.(sp), ..taxinfo]))
+    temp <- rbind(temp, cbind(SpeciesName = sp, x))
+  }
+}
+
+## Rerun for duplicates found
+temp2 <- c()
+for (sp in redo){
+  x <- unique((ala[.(sp), ..taxinfo]))
+  temp2 <- rbind(temp2, cbind(SpeciesName = sp, x))
+}
+temp2 <- temp2[!which(duplicated(temp2$SpeciesName))]
+
+## Combine tables
+temp <- rbind(temp, temp2)
+temp <- as.data.table(temp)
+setorder(temp, SpeciesName)
+setkey(temp, "SpeciesName")
+out <- merge(out, temp, by = "SpeciesName")
+setorder(out, SpeciesName)
+setkey(out)
+
+## Find NA species
+length(which(is.na(out$SpeciesName)))
+
+## Save output table
 write.csv(out, file = file.path(output_dir, "Points_fireoverlap.csv"), 
           row.names = FALSE)
 
+
 ## Remove files ####
 file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+unlink(overlap_dir, recursive = TRUE)
 
 
-## Summarize outputs
-
+## Summarize outputs ####
 message("Total number of species: ")
 nrow(out)
 

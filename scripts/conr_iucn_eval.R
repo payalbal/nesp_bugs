@@ -1,6 +1,9 @@
 ## ConR::IUCN.eval function for parallel processing
 
-conr_iucn_eval <- function(species_filename, basemap_path, working_dir, iucn_outpath, shpfiles = TRUE) {
+conr_iucn_eval <- function(species_filename, 
+                           hull.method = "convex.hull",
+                           basemap_path, working_dir, iucn_outpath, 
+                           shpfiles = TRUE) {
   
   ## Set wd for IUCN-eval function
   setwd(working_dir)
@@ -16,9 +19,10 @@ conr_iucn_eval <- function(species_filename, basemap_path, working_dir, iucn_out
   
   ## Run ConR function
   out <- IUCN.eval(dat, 
-                   method.range = "alpha.hull",
+                   method.range = hull.method,
                    alpha = 2, 
                    Cell_size_AOO = 2,
+                   Cell_size_locations = 2,
                    country_map = basemap,
                    exclude.area = TRUE,
                    SubPop = FALSE,

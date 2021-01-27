@@ -23,11 +23,14 @@ bugs_data = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_data, "outputs")
 spdata_dir = file.path(output_dir, "ala_data" ,"spdata")
 map_dir = file.path(output_dir, "spmaps_unmasked")
+
 spmasked_dir <- file.path(output_dir, "ala_data" ,"spdata_masked")
 if (!dir.exists(spmasked_dir)) {dir.create(spmasked_dir)}
-polygons_dir = file.path(output_dir,"polygons")
+
+polygons_dir = file.path(output_dir,"polygons_convexhull")
 # unlink(polygons_dir, recursive = TRUE, force = TRUE)
 if (!dir.exists(polygons_dir)) {dir.create(polygons_dir)}
+
 working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
 # working_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/"
 
@@ -88,6 +91,16 @@ working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
 # # length(list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE))
 # # length(list.files(spmasked_dir, pattern= ".csv$", full.names = TRUE))
 
+## >> Display #records for species before/after masking ####
+counts <- fread(file.path(output_dir, "ala_masked_datacounts.csv"))
+message(cat("Number of species with more than 0 records: "),
+        nrow(counts[n_masked > 0]))
+message(cat("Number of species with 0 records: "),
+        nrow(counts[n_masked == 0]))
+message(cat("Number of species with at least 3 records: "),
+        nrow(counts[n_masked >= 3]))
+## Becasue IUCN.eval() removes duplicates by name-lat-long
+
 
 
 ## II. Species polygons ####
@@ -102,11 +115,10 @@ spfiles <- list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE)
 message(cat("Total number of species in cleaned ALA data: "),
         length(spfiles))
 
-source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
-basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 
 # ## >> Run IUCN.eval in sequence ####
 # basemap <- readOGR(basemap_file)
+# hull.method <- "convex.hull"  # alpha.hull
 # setwd(working_dir) ## must do for IUCN.eval()
 #
 # for (spfile in spfiles){
@@ -121,9 +133,10 @@ basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 #
 #   ## Run ConR function
 #   out <- IUCN.eval(dat,
-#                    method.range = "alpha.hull",
+#                    # method.range = hull.method,
 #                    alpha = 2,
 #                    Cell_size_AOO = 2,
+#                    Cell_size_locations = 2
 #                    country_map = basemap,
 #                    exclude.area = TRUE,
 #                    SubPop = FALSE,
@@ -140,13 +153,18 @@ basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 #   rm(dat, spname, out)
 # }
 
+
 ## >> Run IUCN.eval in parallel ####
+source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
+basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
+hull.method <- "convex.hull"  # alpha.hull
 
 # ## Package: mclappy - does not show/catch errors
 # mc.cores = future::availableCores()-2
 # set.seed(1, kind = "L'Ecuyer-CMRG" )
 # system.time(invisible(mclapply(spfiles,
 #                                conr_iucn_eval,
+#                                hull.method = hull.method,
 #                                basemap_path = basemap_file,
 #                                working_dir = working_dir,
 #                                iucn_outpath = polygons_dir,
@@ -168,7 +186,7 @@ basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 ## Package: future - for catching errors
 plan(multiprocess, workers = future::availableCores()-2)
 options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. availablecores-1?/RAM-10?
-errorlog <- paste0(output_dir, "/errorlog_ala_polygonsR_", gsub("-", "", Sys.Date()), ".txt")
+errorlog <- paste0(output_dir, "/errorlog_ala_polygons_convhullR_", gsub("-", "", Sys.Date()), ".txt")
 # if(file.exists(errorlog)){unlink(errorlog)}
 writeLines(c(""), errorlog)
 
@@ -178,6 +196,7 @@ system.time(
       spfiles,
       function(x){
         tmp <- tryCatch(expr = conr_iucn_eval(species_filename = x,
+                                              hull.method = hull.method,
                                               basemap_path = basemap_file,
                                               working_dir = working_dir,
                                               iucn_outpath = polygons_dir),
@@ -214,11 +233,17 @@ message(cat("Number of .png map files created from IUCN.eval(): "),
 
 
 ## III. Resolve errors ####
-errorlog <- file.path(output_dir, "errorlog_ala_polygonsR_20201215.txt")
+## Aplha hull polygon error file
+# errorlog <- file.path(output_dir, "errorlog_ala_polygonsR_20201215.txt")
+
+# Convex hull polygon error file
+# errorlog <- file.path(output_dir, "errorlog_ala_polygonsR_20210122.txt")
+
+errorlog <- file.path(output_dir, "errorlog_ala_polygonsR_20210122.txt")
 errorfiles <- trimws(readLines(errorlog)[-1])
-message(cat("NUmber of species showinng errors: "),
+message(cat("Number of species showinng errors: "),
         length(errorfiles))
-errorfiles %in% spfiles
+all(errorfiles %in% spfiles)
 
 polyfiles_sp <- basename(tools::file_path_sans_ext(rdsfiles))
 spfiles_sp <- basename(tools::file_path_sans_ext(spfiles))
@@ -249,6 +274,7 @@ mc.cores = length(errorfiles)
 set.seed(1, kind = "L'Ecuyer-CMRG" )
 system.time(invisible(mclapply(errorfiles,
                                conr_iucn_eval,
+                               hull.method = hull.method,
                                basemap_path = basemap_file,
                                working_dir = working_error_dir,
                                iucn_outpath = polygons_error_dir,
@@ -292,7 +318,9 @@ message(cat("Number of species with unresolved errors: "),
 basemap <- readOGR(file.path(output_dir, "masks/auslands_wgs84.shp"))
 
 ## Read species data
-dat <- as.data.table(readRDS(errorfiles[eidx[5]]))
+dat <- as.data.table(readRDS(errorfiles[eidx[6]]))
+
+dat <- as.data.table(readRDS(spfiles[2]))
 dim(dat)
 spname <- unique(dat$spfile)
 message(cat("Processing species... ",
@@ -302,9 +330,10 @@ names(dat) <- c("latitude", "longitude", "tax", "family", "coly")
 
 ## Run ConR function
 out <- IUCN.eval(dat,
-                 method.range = "alpha.hull",
+                 method.range = hull.method,
                  alpha = 2,
                  Cell_size_AOO = 2,
+                 Cell_size_locations = 2,
                  country_map = basemap,
                  exclude.area = TRUE,
                  SubPop = FALSE,
@@ -393,7 +422,7 @@ pngfiles <- list.files(polygons_dir, pattern = "png$", recursive = TRUE,
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of .png map files created from IUCN.eval(): "),
         length(pngfiles))
-write.csv(pngfiles, file.path(output_dir, "png_filenames.csv"), 
+write.csv(pngfiles, file.path(output_dir, "convexHull_pngfiles.csv"), 
           row.names = FALSE)
 
 
@@ -478,21 +507,6 @@ message(cat("Total number of species: "),
 
 
 
-
-## Display #records for species before/after masking ####
-counts <- fread(file.path(output_dir, "ala_masked_datacounts.csv"))
-message(cat("Number of species with more than 0 records: "),
-        nrow(counts[n_masked > 0]))
-message(cat("This is the same as number of polygons files created: "),
-        length(rdsfiles))
-## Because 3 files showed errors
-
-message(cat("Number of species with 0 records: "),
-        nrow(counts[n_masked == 0]))
-
-message(cat("Number of species with at least 3 records for creating EOO: "),
-        nrow(counts[n_masked >= 3]))
-## Becasue IUCN.eval() removes duplicates by name-lat-long
 
 
 
@@ -624,7 +638,8 @@ points(dat[,.(longitude, latitude)], pch = 2, col = "navy", cex = 0.5)
 #   future.apply::future_lapply(
 #     spfiles,
 #     function(x){
-#       tmp <- tryCatch(expr = conr_iucn_eval(species_filename = x, 
+#       tmp <- tryCatch(expr = conr_iucn_eval(species_filename = x,
+#                                             hull.method = "convex.hull",
 #                                             basemap_path = basemap_path, 
 #                                             working_dir = working_dir, 
 #                                             iucn_outpath = polygons_dir),
