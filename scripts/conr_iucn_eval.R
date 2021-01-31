@@ -2,6 +2,7 @@
 
 conr_iucn_eval <- function(species_filename, 
                            hull.method = "convex.hull",
+                           mask,
                            basemap_path, working_dir, iucn_outpath, 
                            shpfiles = TRUE) {
   
@@ -24,7 +25,7 @@ conr_iucn_eval <- function(species_filename,
                    Cell_size_AOO = 2,
                    Cell_size_locations = 2,
                    country_map = basemap,
-                   exclude.area = TRUE,
+                   exclude.area = mask,
                    SubPop = FALSE,
                    DrawMap = TRUE,
                    write_file_option = "csv", 

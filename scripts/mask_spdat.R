@@ -6,7 +6,7 @@
 #' @param species_filename name of species as per 'scientificName' in ALA data
 #' @param mask_file mask file for Australia
 #' @param data_dir directory where rds files will be stored
-#' @return (1) species data as _masked.rds; (2) species log with number of records before and after masking as .txt
+#' @return (1) species data as _masked.rds; (2) species log with number of records before and after masking as .csv
 #'
 #' @examples
 #' spfile = ...

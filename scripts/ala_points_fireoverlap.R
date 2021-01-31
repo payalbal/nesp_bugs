@@ -27,15 +27,15 @@ source("/tempdata/workdir/nesp_bugs/scripts/points_overlap.R")
 
 
 ## Fire overlap for species WITHOUT EOO polygons  ####
-
+hull.method <- "convhull"
 ## >> Load species data ####
 ## Species names without EOOs + 3 error species from ala_polygons.R
-points_list <- fread(file.path(output_dir, "ala_noEOOspecies.csv"))
+points_list <- fread(file.path(output_dir, paste0("ala_noEOOspecies_", hull.method, ".csv")))
 points_list <- points_list$x
 length(points_list)
 
-## Check number of records for these species in UCN.eval outputs
-temp <- fread(file.path(output_dir, "ala_polygons_areas.csv"))
+## Check number of records for these species in IUCN.eval outputs
+temp <- fread(file.path(output_dir, paste0("ala_polygons_areas_" , hull.method, ".csv")))
 dim(temp[is.na(EOO)])
 summary(temp[is.na(EOO)]$Nbe_unique_occ.)
 
@@ -44,6 +44,7 @@ datfiles <- list.files(spmasked_dir, pattern= "_masked.rds$", full.names = TRUE)
 x <- basename(tools::file_path_sans_ext(datfiles))
 x <- gsub("_masked", "", x)
 datfiles <- datfiles[x %in% points_list] ## subset datfiles for all IUCN species
+length(datfiles)
 
 ## >> Load fire severity raster (re-classed) and get unique classes ####
 fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
@@ -83,7 +84,7 @@ message(cat("Number of output files: "),
 ## Output table ####
 ## Merge csv files
 out <- do.call("rbind", lapply(csvfiles , fread))
-out <- fread(file.path(output_dir, "Points_fireoverlap.csv"))
+# out <- fread(file.path(output_dir, "Points_fireoverlap_convhull.csv"))
 names(out)[1] <- "SpeciesName"
 setorder(out, SpeciesName)
 out <- as.data.table(out)
@@ -97,17 +98,15 @@ ala <- readRDS(file.path(output_dir, "clean2_ala_2020-10-28.rds"))
 setkey(ala, "spfile")
 
 message(cat("Are all species in output table found in cleaned ALA data? "),
-        length(out$Species) == length(which(out$Species %in% ala$spfile)))
+        length(out$SpeciesName) == length(which(out$SpeciesName %in% ala$spfile)))
 
 taxinfo <- c("phylum", "class", "order", "family", 
-             "genus", "species", "subspecies")
+             "genus")
 temp <- data.table()
-redo <- c()
-for (sp in out$Species){
-  if (nrow(unique((ala[.(sp), ..taxinfo]))) > 1){
+for (sp in out$SpeciesName){
+  if (length(unique(ala[which(ala$spfile %in% sp)]$spfile)) != 1){
     
     warning(paste0("More than 1 unique taxon info found for ", sp))
-    redo <- c(redo, sp)
     
   } else {
     x <- unique((ala[.(sp), ..taxinfo]))
@@ -115,51 +114,47 @@ for (sp in out$Species){
   }
 }
 
-## Rerun for duplicates found
-temp2 <- c()
-for (sp in redo){
-  x <- unique((ala[.(sp), ..taxinfo]))
-  temp2 <- rbind(temp2, cbind(SpeciesName = sp, x))
-}
-temp2 <- temp2[!which(duplicated(temp2$SpeciesName))]
+## Check and remove duplicates from extracted taxonomic information
+sum(duplicated(temp$SpeciesName))
+message(cat("# rows in extracted info - # duplicates == # rows in output table: "),
+        nrow(temp) - sum(duplicated(temp$SpeciesName)) == nrow(out))
 
-## Combine tables
-temp <- rbind(temp, temp2)
-temp <- as.data.table(temp)
-setorder(temp, SpeciesName)
+temp <- temp[!which(duplicated(temp$SpeciesName))]
+message(cat("Are all species in output table found in extracted taxon info: "),
+        sum(out$SpeciesName %in% temp$SpeciesName) == nrow(out))
+names(temp)
 setkey(temp, "SpeciesName")
-out <- merge(out, temp, by = "SpeciesName")
-setorder(out, SpeciesName)
-setkey(out)
 
-## Find NA species
-length(which(is.na(out$SpeciesName)))
+out <- merge(out, temp, by = "SpeciesName")
 
 ## Save output table
-write.csv(out, file = file.path(output_dir, "Points_fireoverlap.csv"), 
-          row.names = FALSE)
+write.csv(out, file = file.path(output_dir, "Points_fireoverlap_convhull.csv"), row.names = FALSE)
 
 
 ## Remove files ####
 file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+unlink(shapefile_dir, recursive = TRUE)
 unlink(overlap_dir, recursive = TRUE)
 
 
 ## Summarize outputs ####
-message("Total number of species: ")
-nrow(out)
+message(cat("NA in SpeciesName: "),
+        length(which(is.na(out$SpeciesName))))
 
-message("Number of species showing overlap: ")
+message(cat("Total number of species: "),
+        nrow(out))
+
+message(cat("Number of species showing overlap: "))
 out[, .N, by = Total_Overlap]
 
-message("Species showing 100% fire overlap: ")
-length(out[Total_Overlap == Occurrence_Points]$Species)
+message(cat("Species showing 100% fire overlap: "),
+        length(out[Total_Overlap == Occurrence_Points]$Species))
 
-message("Species showing 50% fire overlap: ")
-length(out[Total_Overlap == (Occurrence_Points/2)]$Species)
+message(cat("Species showing 50% fire overlap: "),
+        length(out[Total_Overlap == (Occurrence_Points/2)]$Species))
 
-message("Species showing no fire overlap: ")
-length(out[Total_Overlap == 0]$Species)
+message(cat("Proprotion of species showing no fire overlap: "),
+        round(length(out[Total_Overlap == 0]$Species)/nrow(out), 3))
 
 
 

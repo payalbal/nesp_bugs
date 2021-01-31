@@ -160,30 +160,29 @@ setkeyv(ala, "spfile")
 message(cat("Are all species in output table found in cleaned ALA data? "),
         length(out$SpeciesName) == length(which(out$SpeciesName %in% ala$spfile)))
 
-taxinfo <- c("phylum", "class", "order", "family",
-             "genus")
+taxinfo <- c("phylum", "class", "order", "family", 
+             "genus", "species", "subspecies", "id")
 temp <- data.table()
 for (sp in out$SpeciesName){
   if (length(unique(ala[which(ala$spfile %in% sp)]$spfile)) != 1){
-
+    
     warning(paste0("More than 1 unique taxon info found for ", sp))
-
-    } else {
-      x <- unique((ala[.(sp), ..taxinfo]))
-      temp <- rbind(temp, cbind(Species = sp, x))
+    
+  } else {
+    x <- unique((ala[.(sp), ..taxinfo]))
+    temp <- rbind(temp, cbind(SpeciesName = sp, x))
   }
 }
 
 ## Check and remove duplicates from extracted taxonomic information
-sum(duplicated(temp$Species))
+sum(duplicated(temp$SpeciesName))
 message(cat("# rows in extracted info - # duplicates == # rows in output table: "),
-        nrow(temp) - sum(duplicated(temp$Species)) == nrow(out))
+        nrow(temp) - sum(duplicated(temp$SpeciesName)) == nrow(out))
 
-temp <- temp[!which(duplicated(temp$Species))]
+temp <- temp[!which(duplicated(temp$SpeciesName))]
 message(cat("Are all species in output table found in extracted taxon info: "),
-        sum(out$SpeciesName %in% temp2$Species) == nrow(out))
+        sum(out$SpeciesName %in% temp$SpeciesName) == nrow(out))
 names(temp)
-names(temp)[1] <- "SpeciesName"
 setkey(temp, "SpeciesName")
 
 out <- merge(out, temp, by = "SpeciesName")
@@ -198,7 +197,24 @@ unlink(shapefile_dir, recursive = TRUE)
 unlink(overlap_dir, recursive = TRUE)
 
 
+## Summarize outputs ####
+message(cat("NA in SpeciesName: "),
+        length(which(is.na(out$SpeciesName))))
 
+message(cat("Total number of species: "),
+        nrow(out))
+
+message(cat("Number of species showing overlap: "))
+out[, .N, by = Total_Overlap]
+
+message(cat("Species showing 100% fire overlap: "),
+        length(out[Total_Overlap == Occurrence_Points]$Species))
+
+message(cat("Species showing 50% fire overlap: "),
+        length(out[Total_Overlap == (Occurrence_Points/2)]$Species))
+
+message(cat("Proprotion of species showing no fire overlap: "),
+        round(length(out[Total_Overlap == 0]$Species)/nrow(out), 3))
 
 
 
