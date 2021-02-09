@@ -1,4 +1,6 @@
 #' Save individual species data as rds files and mapped pdfs from cleaned ALA data
+#' Masking not done at this stage 
+#' Duplicates are removed from species data
 #' 
 #' @author Payal Bal
 #'
