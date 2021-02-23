@@ -197,28 +197,6 @@ unlink(shapefile_dir, recursive = TRUE)
 unlink(overlap_dir, recursive = TRUE)
 
 
-## Summarize outputs ####
-message(cat("NA in SpeciesName: "),
-        length(which(is.na(out$SpeciesName))))
-
-message(cat("Total number of species: "),
-        nrow(out))
-
-message(cat("Number of species showing overlap: "))
-out[, .N, by = Total_Overlap]
-
-message(cat("Species showing 100% fire overlap: "),
-        length(out[Total_Overlap == Occurrence_Points]$Species))
-
-message(cat("Species showing 50% fire overlap: "),
-        length(out[Total_Overlap == (Occurrence_Points/2)]$Species))
-
-message(cat("Proprotion of species showing no fire overlap: "),
-        round(length(out[Total_Overlap == 0]$Species)/nrow(out), 3))
-
-
-
-
 
 
 

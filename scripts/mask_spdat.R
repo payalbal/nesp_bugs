@@ -30,10 +30,10 @@ mask_spdat <- function(species_filename, mask_file, data_dir) {
       file = specieslog, append = T)
   
   ## Clip data by mask extent 
-  dat <- dat[which(longitude > domain.mask@extent@xmin)]
-  dat <- dat[which(longitude < domain.mask@extent@xmax)]
-  dat <- dat[which(latitude > domain.mask@extent@ymin)]
-  dat <- dat[which(latitude < domain.mask@extent@ymax)]
+  dat <- dat[which(longitude >= domain.mask@extent@xmin)]
+  dat <- dat[which(longitude <= domain.mask@extent@xmax)]
+  dat <- dat[which(latitude >= domain.mask@extent@ymin)]
+  dat <- dat[which(latitude <= domain.mask@extent@ymax)]
   
   if (nrow(dat) == 0) { 
     

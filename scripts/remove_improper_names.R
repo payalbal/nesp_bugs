@@ -140,13 +140,14 @@ remove_improper_names <- function(name_vector,
   name_vector <- na.omit(name_vector)
   
   
+  
+  ## Record names with less than or equal to one word
+  sp_incomplete <- name_vector[which(sapply(strsplit(as.character(name_vector), " "), length) <= 1)]
+  
   ## [Optional] Remove single word names (likely higher taxa without species suffix)
   if (!allow.higher.taxa){
     ##  set all names witout a space to NA, which should work because we fixed double and trailing space
     # name_vector[grep(" ", name_vector, fixed = TRUE, invert = TRUE)] <- NA
-    
-    ## record names with less than or equal to one word
-    sp_incomplete <- name_vector[which(sapply(strsplit(as.character(name_vector), " "), length) <= 1)]
     
     ##  set names with less than or equal to one word as NA
     name_vector[which(sapply(strsplit(as.character(name_vector), " "), length) <= 1)] <- NA
