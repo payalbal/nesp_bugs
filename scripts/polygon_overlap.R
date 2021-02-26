@@ -22,13 +22,13 @@ polygon_overlap <- function(species_name, species_poly, shapefile_dir, fire_vals
   dt <- data.table("species_map" = species_map[],
                    "fire_severity" = fire_vals)
   
-  df <- data.frame(matrix(ncol = length(fire_classes) + 3))
+  df <- data.frame(matrix(ncol = length(fire_classes) + 4))
   df[ , 1] <- species_name
-  df[ , -c(1, ncol(df)-1, ncol(df))] <- sapply(fire_classes, FUN = function(x) dt[species_map == 1 & fire_severity == x, length(fire_severity) * 250 * 250 / 1000000])
-  df[ , ncol(df)-1] <- rowSums(df[, -c(1,ncol(df)-1, ncol(df))])
-  df[ , ncol(df)] <- dt[species_map == 1, length(species_map)* 250 * 250 / 1000000]
-  colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), "Total_Overlap", "Species_Polygon")
-  
+  df[ , -c(1, (ncol(df)-2):ncol(df))] <- sapply(fire_classes, FUN = function(x) dt[species_map == 1 & fire_severity == x, length(fire_severity) * 250 * 250 / 1000000])
+  df[ , ncol(df)-2] <- rowSums(df[, -c(1, (ncol(df)-2):ncol(df))])
+  df[ , ncol(df)-1] <- dt[species_map == 1, length(species_map)* 250 * 250 / 1000000]
+  df[ , ncol(df)] <- (df[ , ncol(df)-2]/df[ , ncol(df)-1])*100
+  colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), "Total_Overlap", "Species_Polygon", "Percent_Overlap")
   
   ## Remove files
   file.remove(file.path(shapefile_dir, dir(path = shapefile_dir)))

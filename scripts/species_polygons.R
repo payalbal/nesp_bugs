@@ -227,11 +227,11 @@ rdsfiles <- list.files(polygons_dir, pattern = ".rds$",
                        full.names = TRUE, all.files = TRUE)
 output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
 input_sp <- basename(tools::file_path_sans_ext(spfiles))
-input_sp[!input_sp %in% output_sp]
+errorsp <- input_sp[!input_sp %in% output_sp]
 errorfiles <- spfiles[!input_sp %in% output_sp]
 
 ## >> AOO & EOO areas ####
-## Create data table from .csv output files
+## >> Save combined .csv output files from IUCN.eval() as data.table
 csvfiles <- list.files(polygons_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 out <- do.call("rbind", lapply(csvfiles , read.csv))
@@ -281,9 +281,8 @@ head(out)
 
 ## Save outputs
 setorder(out, EOO, AOO)
-write.csv(out, file = file.path(output_dir, "species_ahullpolys_areas.csv"), 
+write.csv(out, file = file.path(output_dir, "species_EOO_AOO_ahullareas.csv"), 
           row.names = FALSE)
-# file.remove(csvfiles)
 
 message(cat("#species with EOOs: "),
         nrow(out[!is.na(EOO)]))
@@ -294,48 +293,36 @@ message(cat("max #records for species without EOOs (excluding species with error
 
 
 ## >> EOO polygons ####
-## Create list of .rds output files
+## >> Save combined .rds output files from IUCN.eval() as a list
 rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
                        full.names = TRUE, all.files = TRUE)
 polynames <- basename(tools::file_path_sans_ext(rdsfiles))
 temp <- lapply(rdsfiles, readRDS)
 names(temp) <- polynames
 length(temp)
-saveRDS(temp, file = file.path(output_dir, "species_ahullpolys_rdsfiles.rds"))
+saveRDS(temp, file = file.path(output_dir, "species_ahull_outputs.rds"))
 
-## Create list of SPDF from .rds output files
+
+## >> Save list of SPDF from .rds output files
 temp2 <- lapply(temp, "[[", 1)
 temp2 <- lapply(temp2, "[[", 2)
 length(temp2)
-saveRDS(temp2, file = file.path(output_dir, "ala_polygons_convhull.rds"))
+saveRDS(temp2, file = file.path(output_dir, "species_ahullspdf.rds"))
 
 ## Create list of non-NULL SPDF for species with EOOs
 na.eooIDX <- sapply(temp2, length)
 na.eooIDX <- which(na.eooIDX == 0)
-message(cat("# Number of species without EOOS from IUCN.eval(): "),
-        length(na.eooIDX))
-message(cat("# Proportion of species without EOOS from IUCN.eval(): "),
-        length(na.eooIDX)/length(temp2))
-
-message(cat("# Number of species with EOOS from IUCN.eval(): "),
-        length(temp2) - length(na.eooIDX))
-message(cat("# Proportion of species with EOOS from IUCN.eval(): "),
-        (length(temp2) - length(na.eooIDX))/length(temp2))
-
 temp3 <- temp2[-na.eooIDX]
 length(temp3)
-saveRDS(temp3, file = file.path(output_dir, "ala_EOO_convhull.rds"))
-# temp <- do.call(cbind, temp3)
-# names(temp) <- names(temp3)
+saveRDS(temp3, file = file.path(output_dir, "species_ahullEOOspdf.rds"))
 
-## Create list of species names without EOOs
-# eidx <- c(4, 15, 21, 1, 86, 115, 99, 63, 30, 58, 52, 49, 80, 55)
-# errorsp <- gsub("_masked.rds$", "", basename(errorfiles[eidx[c(2, 5, 10)]]))
-errorsp <- gsub("_masked.rds$", "", basename(errorfiles))
+## Create list of species names without EOOs (including error species)
 length(sort(c(names(na.eooIDX), errorsp)))
 write.csv(sort(c(names(na.eooIDX), errorsp)), 
-          file = file.path(output_dir, "ala_noEOOspecies_convhull.csv"), 
+          file = file.path(output_dir, "species_ahullnoEOO.csv"), 
           row.names = FALSE)
+
+## Check
 message(cat("Total number of species: "),
         length(c(names(na.eooIDX), errorsp)) + length(temp3))
 
