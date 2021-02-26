@@ -1,10 +1,9 @@
 ## ConR::IUCN.eval function for parallel processing
 
 conr_iucn_eval <- function(species_filename, 
-                           hull.method = "convex.hull",
-                           mask,
-                           basemap_path, working_dir, iucn_outpath, 
-                           shpfiles = TRUE) {
+                           hull.method,
+                           exclude.by.map = TRUE,
+                           basemap_path, working_dir, iucn_outpath) {
   
   ## Set wd for IUCN-eval function
   setwd(working_dir)
@@ -25,14 +24,14 @@ conr_iucn_eval <- function(species_filename,
                    Cell_size_AOO = 2,
                    Cell_size_locations = 2,
                    country_map = basemap,
-                   exclude.area = mask,
-                   SubPop = FALSE,
-                   DrawMap = TRUE,
+                   exclude.area = exclude.by.map,
                    write_file_option = "csv", 
                    file_name = spname,
-                   export_shp = shpfiles, 
-                   write_shp = TRUE, 
+                   export_shp = TRUE, ## to get SpatialPolygonsDataFrame in output
                    write_results = TRUE,
+                   write_shp = FALSE, ## to write shapefile files to folder
+                   SubPop = FALSE,
+                   DrawMap = FALSE,
                    showWarnings = FALSE)
   
   ## Save output per species

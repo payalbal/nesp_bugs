@@ -7,7 +7,7 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table", "rje", "stringr", "sp", "raster", "lubridate")
+x <- c("data.table", "rje", "stringr", "sp", "raster", "lubridate", "future", "future.apply")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -91,8 +91,9 @@ message(cat("Number of species in non ALA data: "),
         length(nonala_sp))
 
 ala_sp <- unique(ala_data$scientificName)
-message(cat("Number of species in ALA data: "),
+message(cat("Number of species in ALA data (some repetitions here*): "),
         length(ala_sp))
+## * see spfile section
 
 message(cat("Number of non ALA species found in ALA data: "),
         length(nonala_sp[nonala_sp %in% ala_sp]))
@@ -261,8 +262,13 @@ message(cat("Number of unique species in data: "),
         length(unique(dat$scientificName)))
 
 
+## Final formatting
+head(dat)
+dat$class <- tolower(dat$class)
+dat$family <- tolower(dat$family)
+
 ## Create new column to give unique ID by scientificName ####
-setDT(dat)[, new_id := .GRP, by = scientificName]
+setDT(dat)[, new_id := .GRP, by = c("scientificName", "class", "family")]
 length(unique(dat$new_id))
 range(unique(dat$new_id))
 
@@ -274,16 +280,67 @@ message(cat("Number of unique spfile in new dataset: "),
         length(unique(dat$spfile)))
 dat[,new_id := NULL]
 
-## Final formatting
-head(dat)
-dat$class <- tolower(dat$class)
-dat$family <- tolower(dat$family)
+
 
 ## Save combined data table ####
 ## This dataset contains all nonALA data and a subset of the ALA data 
 ## i.e., subset of species in ALA found in nonALA data.
 setorder(dat, scientificName)
 write.csv(dat, file = file.path(output_dir, "data_ALAnonALA.csv"), row.names = FALSE)
+
+
+## Save rds files by species ####
+spdata_dir <- file.path(output_dir, "ala_nonala_data" ,"spdata")
+if(!dir.exists(spdata_dir)){dir.create(spdata_dir)}
+
+## Save by species (reduced) function
+save_spdata2 <- function(species_uid, data, data_dir){
+  
+  temp <- dat[spfile == species_uid]
+  spfile <- unique(temp$spfile)
+  
+  if (length(spfile) > 1){
+    stop("Error: More than 1 unique spfile for naming species file...")
+  }
+  
+  saveRDS(as.data.table(temp),
+          file = file.path(data_dir, paste0(spfile, ".rds")))
+}
+
+## In parallel ####
+plan(multiprocess, workers = future::availableCores()-2)
+options(future.globals.maxSize = +Inf)
+
+## Error log file
+errorlog <- paste0(output_dir, "/errorlog_data_ALAnonALA_", gsub("-", "", Sys.Date()), ".txt")
+# errorlog <- paste0("/tempdata/workdir/nesp_bugs/temp/errorlog_ala_byspeciesR_", gsub("-", "", Sys.Date()), ".txt") 
+writeLines(c(""), errorlog)
+
+dat <- fread(file.path(output_dir, "data_ALAnonALA.csv"))
+all_species <- unique(dat$spfile)
+
+start.time <- Sys.time()
+invisible(future.apply::future_lapply(all_species,
+                                      function(x){
+                                        tmp <- tryCatch(expr = save_spdata2(species_uid = x, 
+                                                                            data = dat, 
+                                                                            data_dir = spdata_dir),
+                                                        error = function(e){ 
+                                                          print(paste("\nError: More than 1 unique spfile for naming species file for...", x))
+                                                          cat(paste(x, "\n"),
+                                                              file = errorlog, 
+                                                              append = TRUE)
+                                                        })
+                                      }))
+end.time <- Sys.time()
+end.time - start.time
+
+
+## Check files - should be 58584
+length(list.files(spdata_dir, pattern = ".rds$"))
+length(all_species)
+
+
 
 
 
