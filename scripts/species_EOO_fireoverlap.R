@@ -97,20 +97,19 @@ if(length(error_list) <= future::availableCores()-2) {
 } else{
   registerDoMC(future::availableCores()-2)
 }
-system.time(log <-
-              foreach(polys = error_list,
-                      .combine = rbind,
-                      .errorhandling = "pass",
-                      .packages = c('sp', 'raster',
-                                    'rgdal', 'data.table')) %dopar%{
-                                      
-                                      polygon_overlap(species_name = polys,
-                                                      species_poly = species_maps[[polys]],
-                                                      shapefile_dir = shapefile_dir,
-                                                      fire_vals = fire_vals,
-                                                      fire_classes = fire_classes,
-                                                      outdir = overlap_dir)
-                                    })
+system.time(foreach(polys = error_list,
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c('sp', 'raster',
+                                  'rgdal', 'data.table')) %dopar%{
+                                    
+                                    polygon_overlap(species_name = polys,
+                                                    species_poly = species_maps[[polys]],
+                                                    shapefile_dir = shapefile_dir,
+                                                    fire_vals = fire_vals,
+                                                    fire_classes = fire_classes,
+                                                    outdir = overlap_dir)
+                                  })
 
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
@@ -121,74 +120,77 @@ message(cat("Number of output files: "),
 csvnames <- basename(tools::file_path_sans_ext(csvfiles))
 error_list[!error_list %in% csvnames]
 
+
+
 ## Output table ####
 ## Merge csv files
-csvfiles <- list.files(overlap_dir, pattern = ".csv$",
-                       full.names = TRUE, all.files = TRUE)
-out <- do.call("rbind", lapply(csvfiles , fread))
+out <- do.call("rbind", lapply(csvfiles, fread))
 message(cat("Check for NAs: "),
         sum(is.na(out)))
-names(out)[1] <- "SpeciesName"
-out <- as.data.table(out)
-setorder(out, SpeciesName)
-setkey(out, "SpeciesName")
+names(out)[1] <- "spfile"
+setDT(out, key = "spfile")
 
-## Extract taxonomic information for species
-ala <- readRDS(file.path(output_dir, "clean2_ala_2020-10-28.rds"))
-setkeyv(ala, "spfile")
+message(cat("Check if area overlapping with fire is always <= Total polygonn area for species: "),
+        all(out$Total_Overlap <= out$Species_Polygon))
 
-message(cat("Are all species in output table found in cleaned ALA data? "),
-        length(out$SpeciesName) == length(which(out$SpeciesName %in% ala$spfile)))
+## Add class/family information to output table
+tax <- fread(file = file.path(output_dir, "data_ALAnonALA.csv"))
+tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, family, spfile)]
+tax <- tax[,.(scientificName, class, family, spfile)]
+tax <- tax[spfile %in% out$spfile]
 
-taxinfo <- c("phylum", "class", "order", "family", 
-             "genus", "species", "subspecies", "id")
-temp <- data.table()
-for (sp in out$SpeciesName){
-  if (length(unique(ala[which(ala$spfile %in% sp)]$spfile)) != 1){
-    
-    warning(paste0("More than 1 unique taxon info found for ", sp))
-    
-  } else {
-    x <- unique((ala[.(sp), ..taxinfo]))
-    temp <- rbind(temp, cbind(SpeciesName = sp, x))
-  }
-}
+dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
+dim(tax); length(unique(tax$spfile)); length(unique(tax$scientificName))
 
-## Check and remove duplicates from extracted taxonomic information
-sum(duplicated(temp$SpeciesName))
-message(cat("# rows in extracted info - # duplicates == # rows in output table: "),
-        nrow(temp) - sum(duplicated(temp$SpeciesName)) == nrow(out))
-
-temp <- temp[!which(duplicated(temp$SpeciesName))]
-message(cat("Are all species in output table found in extracted taxon info: "),
-        sum(out$SpeciesName %in% temp$SpeciesName) == nrow(out))
-names(temp)
-setkey(temp, "SpeciesName")
-
-out <- merge(out, temp, by = "SpeciesName")
+out <- merge(out, tax, by = "spfile")
+out <- out[,c(10:8, 2:7, 1)]
 
 ## Save output table
-write.csv(out, file = file.path(output_dir, "EOO_fireoverlap.csv"), row.names = FALSE)
+setDT(out, key = "spfile")
+write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap.csv"), row.names = FALSE)
 
 
-## Remove files ####
-file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
-unlink(shapefile_dir, recursive = TRUE)
-unlink(overlap_dir, recursive = TRUE)
+# ## Remove files ####
+# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+# unlink(shapefile_dir, recursive = TRUE)
+# unlink(overlap_dir, recursive = TRUE)
+
+
+## Summarize outputs ####
+message(cat("NA in scientificName: "),
+        length(which(is.na(out$scientificName))))
+
+message(cat("Total number of species: "),
+        nrow(out))
+
+message(cat("Number of species showing overlap: "))
+out[, .N, by = Total_Overlap]
+
+message(cat("# Species showing 100% fire overlap: "),
+        nrow(out[Percent_Overlap == 100]));
+round(nrow(out[Percent_Overlap == 100])/nrow(out), 2)
+message(cat("# Species showing 100% fire overlap: "))
+print(setorder(out[Percent_Overlap == 100][, .(class,family, scientificName)], class, family, scientificName))
+
+message(cat("# Species showing >= 90% fire overlap: "),
+        nrow(out[Percent_Overlap >= 90]));
+nrow(out[Percent_Overlap >= 90])/nrow(out)
+
+message(cat("# Species showing >= 50% fire overlap: "),
+        nrow(out[Percent_Overlap >= 50]));
+round(nrow(out[Percent_Overlap >= 50])/nrow(out), 2)
+
+message(cat("# Species showing < 50% and > 30% fire overlap: "),
+        nrow(out[Percent_Overlap < 50 & Percent_Overlap > 30]));
+round(nrow(out[Percent_Overlap < 50 & Percent_Overlap > 30])/nrow(out), 2)      
+
+message(cat("# Species showing <= 30% fire overlap: "),
+        nrow(out[Percent_Overlap <= 30]));
+round(nrow(out[Percent_Overlap <= 30])/nrow(out), 2)
+
+message(cat("# Species showing no fire overlap: "),
+        nrow(out[Percent_Overlap == 0]))
+round(nrow(out[Percent_Overlap == 0])/nrow(out), 2)
 
 
 
-
-
-
-
-## EXTRAS ------------ ####
-
-# # Download, extract, and remove zipfile
-# zipdst <- file.path(bugs_data, "fire/AUS_GEEBAM_Fire_Severity_QGIS.zip")
-# system(paste0("curl http://www.environment.gov.au/fed/catalog/search/resource/downloadData.page?uuid=%7B8CE7D6BE-4A82-40D7-80BC-647CB1FE5C08%7D -o ", zipdst))
-# 
-#     # system(paste0("curl --header 'Host: www.environment.gov.au' --user-agent 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0' --header 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' --header 'Accept-Language: en-US,en;q=0.5' --header 'Content-Type: application/x-www-form-urlencoded' --header 'Origin: http://www.environment.gov.au' --referer 'http://www.environment.gov.au/fed/catalog/search/resource/downloadData.page?uuid=%7B8CE7D6BE-4A82-40D7-80BC-647CB1FE5C08%7D' --cookie 'JSESSIONID=3B5D12DD42C3FE22CB7EB91764EF65D4; Drupal.session_cache.sid=R0Ib7fkVaAjS' --header 'Upgrade-Insecure-Requests: 1' --request POST --data-urlencode 'downloadFilesTable%3A0%3Aj_id_jsp_1490667900_4pc7=downloadFilesTable:0:j_id_jsp_1490667900_4pc7' --data-urlencode 'javax.faces.ViewState=-7640385847597866074:-7131431088440779044' --data-urlencode 'downloadFilesTable%3A0%3Aj_id_jsp_1490667900_4pc7%3Aj_id_jsp_1490667900_5pc7=downloadFilesTable:0:j_id_jsp_1490667900_4pc7:j_id_jsp_1490667900_5pc7' --data-urlencode 'filename=AUS_GEEBAM_Fire_Severity_QGIS.zip' --data-urlencode 'fileIdentifier=E4170D64-F926-46A9-9856-24FCA107CA1D' --data-urlencode 'uuid=8CE7D6BE-4A82-40D7-80BC-647CB1FE5C08' 'http://www.environment.gov.au/fed/catalog/search/resource/downloadData.page' --output ", zipdst))
-# 
-# unzip(zipfile = zipdst, files = "AUS_GEEBAM_Fire_Severity_QGIS_NIAFED20200224.tif", exdir = file.path(bugs_data, "fire"), junkpaths = TRUE)
-# file.remove(zipdst)

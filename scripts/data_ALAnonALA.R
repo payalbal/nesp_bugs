@@ -288,6 +288,15 @@ dat[,new_id := NULL]
 setorder(dat, scientificName)
 write.csv(dat, file = file.path(output_dir, "data_ALAnonALA.csv"), row.names = FALSE)
 
+## Summarise
+print(setorder(dat[, .N, data_source], -N))
+x <- dat[, .N, data_source == "ALA"]
+message(cat("proportion of data from ALA: "),
+        round(x[data_source == TRUE]$N/dim(dat)[1], 2))
+message(cat("proportion of data from non-ALA sources: "),
+        round(x[data_source == FALSE]$N/dim(dat)[1], 2))
+
+
 
 ## Save rds files by species ####
 spdata_dir <- file.path(output_dir, "ala_nonala_data" ,"spdata")
