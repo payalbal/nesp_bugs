@@ -7,7 +7,9 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table", "rje", "stringr", "sp", "raster", "lubridate", "future", "future.apply")
+x <- c("data.table", "rje", "stringr", 
+       "sp", "raster", "sf", "lubridate", 
+       "future", "future.apply")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -130,10 +132,28 @@ message(cat("Number of unique spfile in new dataset: "),
   ## To be fixed further down...
 
 ## Mask data ####
-## >> Load mask
-mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
+  # ## >> Load mask in WGS ####
+  # mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
+  # ausmask <- raster::raster(mask_file)
+  # wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+## >> Load mask in AEA137 ####
+mask_file <- file.path(output_dir, "masks", "ausmask_noaa_250mAlbersEA_NA.tif")
 ausmask <- raster::raster(mask_file)
 wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+aea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+## >>>> Reproject data ro AEA137 ####
+sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
+                    proj4string = CRS(wgs_crs))
+sp_reproj <- sp::spTransform(sp, CRS(aea_crs))
+str(sp_reproj@coords)
+
+plot(ausmask, box = FALSE, axes = FALSE, legend = FALSE)
+plot(sp_reproj, add = TRUE, pch = 17, col = "tomato3", cex = 0.5)
+
+dat$latitude <- sp_reproj@coords[,"latitude"]
+dat$longitude <- sp_reproj@coords[,"longitude"]
 
 ## >> Check for out-of-extent lat/longs
 dim(dat[which(longitude < ausmask@extent@xmin)])
@@ -153,7 +173,7 @@ message(cat("Proportion of records lost by clipping to mask extent: "),
 
 ## >> Clip data/occurrence points if they fall outside mask polygon(s)
 sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
-                    proj4string = CRS(wgs_crs))
+                    proj4string = CRS(aea_crs))
 grd.pts <-extract(ausmask, sp)
 
 ## Subset data - HERE THERE MIGHT BE PROBLEM WITH ALIGNMENT OF DATA AND MASK
@@ -200,7 +220,6 @@ message(cat("Number of unique spfile in new dataset: "),
 ## Apply year filter ####
 ## >> Find records without year information
 plot(dat[!is.na(year)][, .N, year], xaxp = c(1630, 2020, 10), pch = 20)
-
 range(dat$year, na.rm = TRUE)
 
 message(cat("Proportion of records with year = NA: "),
@@ -262,6 +281,51 @@ message(cat("Number of unique species in data: "),
         length(unique(dat$scientificName)))
 
 
+## Complete taxonomic information (if possible) ####
+## List records with incomplete class/family columns
+message(cat("Number of records with NA class: "),
+        nrow(dat[is.na(class)]))
+message(cat("Number of records with NA family: "),
+        nrow(dat[is.na(family)]))
+message(cat("Species with NA class: "))
+unique(dat[is.na(class)]$scientificName)
+  ## No class information listed in ALA
+
+message(cat("Number of records with blank string for family: "),
+        nrow(dat[family == ""]))
+message(cat("Number of records with blank string for class: "),
+        nrow(dat[class == ""]))
+message(cat("Number of records with blank string for class & family: "),
+        nrow(dat[class == "" & family == ""]))
+dat[class == "" & family == ""][, .N, data_source]
+unique(dat[class == "" & family == ""]$scientificName)
+# x <- unique(dat[class == "" & family == ""]$scientificName)
+# write.csv(x, file.path(output_dir, "incomplete_taxinfo.csv"), row.names = FALSE)
+
+## Delete records as per incomplete_taxinfo_JRM.csv
+taxinfo <- fread(file.path(output_dir, "incomplete_taxinfo_JRM.csv"))
+dropspecies <- taxinfo[exclude != ""]$species
+taxinfo <- taxinfo[exclude == ""]
+
+nrow(dat[class == "" & family == "" & scientificName %in% dropspecies])
+nrow(dat[scientificName %in% dropspecies])
+nrow(dat) - nrow(dat[!(scientificName %in% dropspecies)])
+
+dat <- dat[!(scientificName %in% dropspecies)]
+
+## Populate class/family columns as per incomplete_taxinfo_JRM.csv
+for (sp in taxinfo$species){
+  dat[class == "" & family == "" & scientificName %in% sp]$class = taxinfo[species == sp]$class
+  dat[class == "" & family == "" & scientificName %in% sp]$family = taxinfo[species == sp]$family
+}
+
+message(cat("Number of records with blank string for family: "),
+        nrow(dat[family == ""]))
+message(cat("Number of records with blank string for class: "),
+        nrow(dat[class == ""]))
+message(cat("Number of records with blank string for class & family: "),
+        nrow(dat[class == "" & family == ""]))
+
 ## Final formatting
 head(dat)
 dat$class <- tolower(dat$class)
@@ -272,7 +336,7 @@ setDT(dat)[, new_id := .GRP, by = c("scientificName", "class", "family")]
 length(unique(dat$new_id))
 range(unique(dat$new_id))
 
-## Merge spfile and new_ID (overwrite existing apfile column)
+## Merge spfile and new_ID (overwrite existing spfile column)
 dat$spfile <- paste0(dat$spfile, "_", dat$new_id)
 message(cat("Number of unique scientificName in new dataset: "),
         length(unique(dat$scientificName)))
@@ -281,12 +345,12 @@ message(cat("Number of unique spfile in new dataset: "),
 dat[,new_id := NULL]
 
 
-
-## Save combined data table ####
+## Save combined data table - WGS 84 ####
 ## This dataset contains all nonALA data and a subset of the ALA data 
 ## i.e., subset of species in ALA found in nonALA data.
 setorder(dat, scientificName)
-write.csv(dat, file = file.path(output_dir, "data_ALAnonALA.csv"), row.names = FALSE)
+# write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"), row.names = FALSE)
+write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_aea137.csv"), row.names = FALSE)
 
 ## Summarise
 print(setorder(dat[, .N, data_source], -N))
@@ -295,7 +359,6 @@ message(cat("proportion of data from ALA: "),
         round(x[data_source == TRUE]$N/dim(dat)[1], 2))
 message(cat("proportion of data from non-ALA sources: "),
         round(x[data_source == FALSE]$N/dim(dat)[1], 2))
-
 
 
 ## Save rds files by species ####
@@ -325,7 +388,7 @@ errorlog <- paste0(output_dir, "/errorlog_data_ALAnonALA_", gsub("-", "", Sys.Da
 # errorlog <- paste0("/tempdata/workdir/nesp_bugs/temp/errorlog_ala_byspeciesR_", gsub("-", "", Sys.Date()), ".txt") 
 writeLines(c(""), errorlog)
 
-dat <- fread(file.path(output_dir, "data_ALAnonALA.csv"))
+dat <- fread(file.path(output_dir, "data_ALAnonALA_aea137.csv"))
 all_species <- unique(dat$spfile)
 
 start.time <- Sys.time()
@@ -345,13 +408,9 @@ end.time <- Sys.time()
 end.time - start.time
 
 
-## Check files - should be 58584
+## Check files
 length(list.files(spdata_dir, pattern = ".rds$"))
 length(all_species)
-
-
-
-
 
 
 

@@ -1,4 +1,4 @@
-## NonALA data processing
+## NonALA data processing - WGS 84
 
 
 ## Set working environment ####
@@ -20,7 +20,7 @@ output_dir = file.path(bugs_data, "outputs")
 # ala_names <- read.csv2(file.path(output_dir, "ALAdata_colnames.csv"))
 dat_cols <- c("data_source", "id", "class", "family", "scientificName", "latitude", "longitude", "year", "sensitive", "habitat")
 
-## Load mask and CRS text strings
+## Load mask and CRS text strings - WGS 84
 mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
 ausmask <- raster::raster(mask_file)
 gda_crs = "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"
