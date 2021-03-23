@@ -32,6 +32,23 @@ fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
 
+# ## >> Run overlap analysis in parallel: doMC ####
+# ## 'log' only useful when running small number of species
+# registerDoMC(76)
+# system.time(foreach(polys = polygon_list,
+#                     .combine = rbind,
+#                     .errorhandling = "pass",
+#                     .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
+#                       
+#                       polygon_overlap(species_name = polys, # polys = polygon_list[335]
+#                                       species_poly = species_maps[[polys]],
+#                                       shapefile_dir = shapefile_dir,
+#                                       fire_vals = fire_vals,
+#                                       fire_classes = fire_classes,
+#                                       outdir = overlap_dir)
+#                     })
+
+
 ## Error runs.... ####
 ## >> Display results summary ####
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
@@ -50,13 +67,13 @@ message(cat("Number of species in error list: "),
 ## Reruns ####
 ## Repeat this till most of the errors are fixed
 ## Errors seem to be an artefact of the system rather than problem with data/code
-registerDoMC(75)
+registerDoMC(76)
 system.time(foreach(polys = error_list,
                     .combine = rbind,
                     .errorhandling = "pass",
                     .packages = c('sp', 'raster',
                                   'rgdal', 'data.table')) %dopar%{
-                                    
+
                                     polygon_overlap(species_name = polys,
                                                     species_poly = species_maps[[polys]],
                                                     shapefile_dir = shapefile_dir,

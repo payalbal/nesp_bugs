@@ -36,15 +36,6 @@ system(paste0("gdal_calc.py -A ", infile,
               " --outfile=", outfile))
 gdalUtils::gdalinfo(outfile)
 
-# # Mask fire map
-# infile <- file.path(output_dir, "fire", "severity3_eqar250.tif")
-# outfile <- file.path(output_dir, "fire", "severity3_eqar250_masked.tif")
-# 
-# ## step one_clip by e
-# 
-# ## step two_mask
-# gdalmask(infile = infile, mask = mask_file, outfile = outfile, output_Raster = FALSE, overwrite=TRUE, verbose=TRUE)
-
 
 # ## Input data - NIAFED fire data
 # ## Source (severity): http://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B8CE7D6BE-4A82-40D7-80BC-647CB1FE5C08%7D

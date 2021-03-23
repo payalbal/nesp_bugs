@@ -19,10 +19,10 @@ output_dir = file.path(bugs_dir, "outputs")
 shapefile_dir = file.path(output_dir, "species_shapefiles")
 if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
 
-overlap_dir = file.path(output_dir, "polygon_overlap")
+overlap_dir = file.path(output_dir, "polygon_region_overlap")
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
-source("/tempdata/workdir/nesp_bugs/scripts/polygon_overlap.R")
+source("/tempdata/workdir/nesp_bugs/scripts/polygon_region_overlap.R")
 
 
 ## Overlaps for species WITH EOO polygons  ####
@@ -30,26 +30,40 @@ source("/tempdata/workdir/nesp_bugs/scripts/polygon_overlap.R")
 species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
 
-## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
-fire_vals <- fire_severity[]
-fire_classes <- sort(unique(na.omit(fire_vals)))
+
+
+## >> Load in region rasters and get unique classes ####
+## >>>> State raster (based on GEOCAOST 100K)
+states <- raster(file.path(output_dir, ".tif"))
+state_vals <- states[]
+state_classes <- sort(unique(na.omit(state_vals)))
+
+## >>>> Bushfire recovery regions raster
+recovery.regions <- raster(file.path(output_dir, ".tif"))
+recovery_vals <- recovery.regions[]
+recovery_classes <- sort(unique(na.omit(recovery_vals)))
+
+## >>>> NRM regions raster
+nrm.regions <- raster(file.path(output_dir, ".tif"))
+nrm_vals <- nrm.regions[]
+nrm_classes <- sort(unique(na.omit(nrm_vals)))
+
 
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
 registerDoMC(future::availableCores()-2)
 system.time(foreach(polys = polygon_list,
-                      .combine = rbind,
-                      .errorhandling = "pass",
-                      .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
-
-                        polygon_overlap(species_name = polys, # polys = polygon_list[335]
-                                        species_poly = species_maps[[polys]],
-                                        shapefile_dir = shapefile_dir,
-                                        fire_vals = fire_vals,
-                                        fire_classes = fire_classes,
-                                        outdir = overlap_dir)
-                      })
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
+                      
+                      polygon_region_overlap(species_name = polys, # polys = polygon_list[335]
+                                      species_poly = species_maps[[polys]],
+                                      shapefile_dir = shapefile_dir,
+                                      fire_vals = fire_vals,
+                                      fire_classes = fire_classes,
+                                      outdir = overlap_dir)
+                    })
 
 
 ## Error checking ####
@@ -83,7 +97,7 @@ system.time(foreach(polys = error_list,
                     .packages = c('sp', 'raster',
                                   'rgdal', 'data.table')) %dopar%{
                                     
-                                   polygon_overlap(species_name = polys,
+                                    polygon_region_overlap(species_name = polys,
                                                     species_poly = species_maps[[polys]],
                                                     shapefile_dir = shapefile_dir,
                                                     fire_vals = fire_vals,
@@ -118,10 +132,10 @@ setDT(out, key = "spfile")
 
 ## Add total and percentage overlap
 out$Total_Pverlap <- #rowSums(df[, -c(1:2, (ncol(df)-2):ncol(df))])
-out$Percent_Overlap <- #(df[ , ncol(df)-2]/(df[ , ncol(df)-1] - df[, ncol(df)-5]))*100
-
-message(cat("Check if area overlapping with fire is always <= Total polygonn area for species: "),
-        all(out$Total_Overlap <= out$Species_Polygon))
+  out$Percent_Overlap <- #(df[ , ncol(df)-2]/(df[ , ncol(df)-1] - df[, ncol(df)-5]))*100
+  
+  message(cat("Check if area overlapping with fire is always <= Total polygonn area for species: "),
+          all(out$Total_Overlap <= out$Species_Polygon))
 
 ## Add class/family information to output table
 tax <- fread(file = file.path(output_dir, "data_ALAnonALA.csv"))

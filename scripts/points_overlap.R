@@ -30,15 +30,25 @@ points_overlap <- function(data_rds, crs_org, crs_new, fire_classes, outdir){
   points_dat <- as.data.table(points_dat)
   spname <- unique(points_dat$spfile)
   
-  df <- data.frame(matrix(ncol = length(fire_classes) + 4))
-  df[ , 1] <- spname
-  df[ , -c(1, (ncol(df)-2):ncol(df))] <- sapply(fire_classes, FUN = function(x) points_dat[FireClass == x, length(FireClass)])
-  df[ , ncol(df)-2] <- rowSums(df[, -c(1, (ncol(df)-2):ncol(df))])
-  df[ , ncol(df)-1] <- nrow(points_dat)
-  df[ , ncol(df)] <- (df[ , ncol(df)-2]/df[ , ncol(df)-1])*100
+  df <- data.frame(matrix(ncol = length(fire_classes) + 2))
   colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), 
-                    "Total_Overlap", "Occurrence_Points", "Percent_Overlap")
+                    "Occurrence_Points")
+  df[ , 1] <- spname
+  df[, (ncol(df)-3):(ncol(df)-1)] <- sapply(fire_classes, FUN = function(x) points_dat[FireClass == x, length(FireClass)])
+  df[ , ncol(df)] <- nrow(points_dat)
+
   ## Save output as csv
   write.csv(df, file = paste0(file.path(outdir, spname), ".csv"), row.names = FALSE)
   
 }
+
+
+## Previously...
+# df <- data.frame(matrix(ncol = length(fire_classes) + 4))
+# df[ , 1] <- spname
+# df[ , -c(1, (ncol(df)-2):ncol(df))] <- sapply(fire_classes, FUN = function(x) points_dat[FireClass == x, length(FireClass)])
+# df[ , ncol(df)-2] <- rowSums(df[, -c(1, (ncol(df)-2):ncol(df))])
+# df[ , ncol(df)-1] <- nrow(points_dat)
+# df[ , ncol(df)] <- (df[ , ncol(df)-2]/df[ , ncol(df)-1])*100
+# colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), 
+#                   "Total_Overlap", "Occurrence_Points", "Percent_Overlap")

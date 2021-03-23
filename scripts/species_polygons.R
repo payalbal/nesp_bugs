@@ -16,11 +16,11 @@ lapply(x, require, character.only = TRUE)
 rm(x)
 
 ## File paths and folders
-bugs_data = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
-output_dir = file.path(bugs_data, "outputs")
+bugs_dir = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
+output_dir = file.path(bugs_dir, "outputs")
 spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 
-polygons_dir = file.path(output_dir,"polygons_ahull")
+polygons_dir = file.path(output_dir,"species_polygons")
 if (!dir.exists(polygons_dir)) {dir.create(polygons_dir)}
 
 working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
@@ -46,11 +46,11 @@ hull.method <- "alpha.hull" # "convex.hull"
 ## Package: future - for catching errors
 plan(multiprocess, workers = future::availableCores()-2)
 options(future.globals.maxSize = +Inf) ## CAUTION: Set this to a value, e.g. availablecores-1?/RAM-10?
-errorlog <- paste0(output_dir, "/errorlog_polygons_ahull_", gsub("-", "", Sys.Date()), ".txt")
+errorlog <- paste0(output_dir, "/errorlog_species_polygons_", gsub("-", "", Sys.Date()), ".txt")
 # if(file.exists(errorlog)){unlink(errorlog)}
 writeLines(c(""), errorlog)
 
-...system.time(
+system.time(
   suppressWarnings(
     future.apply::future_lapply(
       spfiles,
@@ -85,21 +85,25 @@ message(cat("Number of .rds output files created from IUCN.eval(): "),
 
 
 ## Resolve errors ####
-polygons_error_dir <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons_errors"
+polygons_error_dir <- "/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/species_polygons_errors"
 dir.create(polygons_error_dir)
-working_error_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons_errors/"
+working_error_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/species_polygons_errors/"
 setwd(working_error_dir)
 
 source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
 basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
+hull.method <- "alpha.hull" # "convex.hull"  
 
-errorlog <- file.path(output_dir, "errorlog_polygons_ahull_20210225.txt")
+## >> Batch rerun for species showing errors ####
+## List species not in output files
+errorlog <- file.path(output_dir, "errorlog_species_polygons_20210308.txt")
 errorfiles <- trimws(readLines(errorlog)[-1])
-message(cat("Number of species showinng errors: "),
+message(cat("Number of species showing errors: "),
         length(errorfiles))
+
+length(csvfiles)+length(errorfiles) == length(spfiles)
 all(errorfiles %in% spfiles)
 
-## List species not in output files
 output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
 input_sp <- basename(tools::file_path_sans_ext(spfiles))
 input_sp[!input_sp %in% output_sp]
@@ -107,12 +111,12 @@ message(cat("error species == species not found in rds output files: "),
         all(basename(tools::file_path_sans_ext(errorfiles)) 
             %in% input_sp[!input_sp %in% output_sp]))
 
-## >> Batch rerun for species showing errors
 mc.cores = future::availableCores()-2
 set.seed(1, kind = "L'Ecuyer-CMRG")
 system.time(invisible(mclapply(errorfiles,
                                conr_iucn_eval,
                                hull.method = hull.method,
+                               exclude.by.map = TRUE,
                                basemap_path = basemap_file,
                                working_dir = working_error_dir,
                                iucn_outpath = polygons_error_dir,
@@ -123,7 +127,7 @@ system.time(invisible(mclapply(errorfiles,
   ##              in user code, all values of the jobs will be affected
   ## Rerun for species with errors..
 
-## Check # files created in error directory
+## List species not in output files
 csvfiles2 <- list.files(polygons_error_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of .csv output files created from IUCN.eval(): "),
@@ -134,7 +138,6 @@ rdsfiles2 <- list.files(polygons_error_dir, pattern = ".rds$",
 message(cat("Number of .rds output files created from IUCN.eval(): "),
         length(rdsfiles2))
 
-## List species not in output files
 error_sp <- basename(tools::file_path_sans_ext(errorfiles))
 sp1 <- basename(tools::file_path_sans_ext(rdsfiles2))
 errorfiles <- errorfiles[!error_sp %in% sp1]
@@ -143,11 +146,11 @@ errorfiles <- errorfiles[!error_sp %in% sp1]
 
 ## >> Individual reruns for species with unresolved errors ####
 ## NOTE: Rerun multiple times for a species
-basemap <- readOGR(file.path(output_dir, "masks/auslands_wgs84.shp"))
+basemap <- readOGR(basemap_file)
 
 ## Read species data
 length(errorfiles)
-dat <- as.data.table(readRDS(errorfiles[6]))
+dat <- as.data.table(readRDS(errorfiles[1]))
 dim(dat)
 spname <- unique(dat$spfile)
 message(cat("Processing species... ",
@@ -173,11 +176,48 @@ out <- IUCN.eval(dat,
 
 saveRDS(out, file = paste0(polygons_error_dir, "/", spname, ".rds"))
 rm(dat, spname, out)
+  ## Error in { : task 1 failed - "task 1 failed - "subscript out of bounds""
+  ## Error in { : task 1 failed - "task 1 failed - "object 'case' not found""
 
-## Error in { : task 1 failed - "task 1 failed - "subscript out of bounds""
-## Error in { : task 1 failed - "task 1 failed - "object 'case' not found""
+## List species not in output files
+csvfiles2 <- list.files(polygons_error_dir, pattern = ".csv$",
+                        full.names = TRUE, all.files = TRUE)
+message(cat("Number of .csv output files created from IUCN.eval(): "),
+        length(csvfiles2))
 
-## >> Copy files & clean up ####
+rdsfiles2 <- list.files(polygons_error_dir, pattern = ".rds$",
+                        full.names = TRUE, all.files = TRUE)
+message(cat("Number of .rds output files created from IUCN.eval(): "),
+        length(rdsfiles2))
+
+error_sp <- basename(tools::file_path_sans_ext(errorfiles))
+sp1 <- basename(tools::file_path_sans_ext(rdsfiles2))
+error_sp[!error_sp %in% sp1]
+
+
+## >> Visualise species with unresolved errors ####
+errorfiles <- errorfiles[!error_sp %in% sp1]
+plot(basemap)
+wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+dat <- do.call("rbind", lapply(errorfiles, readRDS))
+dat.spdf <- sp::SpatialPointsDataFrame(coords = dat[, .(longitude, latitude)], 
+                                       data = dat, proj4string = CRS(wgs_crs))
+plot(basemap, col = "wheat")
+plot(dat.spdf, add = TRUE, pch = 18, cex = 1, col = "tomato3")
+
+par(mfrow= c(2,3), mar=c(0,0,1,0))
+for (e in errorfiles){
+  dat <- as.data.table(readRDS(e))
+  sp <- SpatialPoints(dat[, .(longitude, latitude)], 
+                      proj4string = CRS(wgs_crs))
+  plot(basemap, col = "wheat", main = basename(tools::file_path_sans_ext(e)))
+  plot(sp, add = TRUE, pch = 8, cex = 3, col = "tomato3")
+  
+}
+
+
+## >> Copy files between folders & clean up ####
 csvfiles <- list.files(polygons_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 csvfiles2 <- list.files(polygons_error_dir, pattern = ".csv$",
@@ -186,6 +226,7 @@ message(cat("#.csv output files form main run: "),
         length(csvfiles))
 message(cat("#.csv output files from error run: "),
         length(csvfiles2))
+length(spfiles) - (length(csvfiles) + length(csvfiles2))
 
 file.copy(csvfiles2, polygons_dir,
           overwrite = FALSE, recursive = TRUE,
@@ -205,6 +246,7 @@ message(cat("#.rds output files from main run: "),
         length(rdsfiles))
 message(cat("#.rds output files from error run: "),
         length(rdsfiles2))
+length(spfiles) - (length(rdsfiles) + length(rdsfiles2))
 
 file.copy(rdsfiles2, polygons_dir,
           overwrite = FALSE, recursive = TRUE,
@@ -256,7 +298,7 @@ setDT(temp)
 out <- rbind(out, temp)
 
 ## Add class/family information to output table
-tax <- fread(file = file.path(output_dir, "data_ALAnonALA.csv"))
+tax <- fread(file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
 tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, family, spfile)]
 tax <- tax[,.(scientificName, class, family, spfile)]
 

@@ -12,9 +12,10 @@ lapply(x, require, character.only = TRUE)
 rm(x)
 
 ## Server paths
-bugs_data = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
-nonala_data = file.path(bugs_data, "nonALA")
-output_dir = file.path(bugs_data, "outputs")
+bugs_dir = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
+nonala_dir = file.path(bugs_dir, "nonALA")
+output_dir = file.path(bugs_dir, "outputs")
+nonala_out = file.path(output_dir, "nonALA_data")
 
 ## Specify column order for input data
 # ala_names <- read.csv2(file.path(output_dir, "ALAdata_colnames.csv"))
@@ -35,7 +36,7 @@ setkey(afd, afd_ValidName)
 
 ## NSW - State data ####
 rm(dat)
-dat <- fread(file.path(nonala_data, "nsw_state.csv"))
+dat <- fread(file.path(nonala_dir, "nsw_state.csv"))
 names(dat)
 
 ## Remove invalid records
@@ -107,13 +108,13 @@ names(dat) <- dat_cols
 setorder(dat, scientificName)
 head(dat)
 str(dat)
-saveRDS(dat, file = file.path(nonala_data, "nsw_state.rds"))
+saveRDS(dat, file = file.path(nonala_out, "nsw_state.rds"))
 
 
 
 ## VIC - State data ####
 rm(dat)
-dat <- fread(file.path(nonala_data, "vic_state.csv"))
+dat <- fread(file.path(nonala_dir, "vic_state.csv"))
 names(dat)
 
 ## Remove invalid records
@@ -154,7 +155,7 @@ dat[, .N, by = `Victorian Advisory List`]
 dat[`Victorian Advisory List` != ""]$sensitive = 1
 
 ## Label sensitive for species labelled as 'breed' or 'rest' under restricted flag in VBA species-checklist
-checklist <- fread(file.path(nonala_data, "state/Vic/Species-Checklist.csv"))
+checklist <- fread(file.path(nonala_dir, "state/Vic/Species-Checklist.csv"))
 unique(checklist$TAXON_TYPE)
 checklist <- checklist[TAXON_TYPE == "Invertebrates" ]
 checklist <- checklist[,.(SCIENTIFIC_NAME, SCIENTIFIC_NME_SYNONYM, RESTRICTED_FLAG)]
@@ -253,13 +254,13 @@ sum(is.na(dat$class))
 sum(is.na(dat$family))
 
 ## Save data table
-saveRDS(dat, file = file.path(nonala_data, "vic_state.rds"))
+saveRDS(dat, file = file.path(nonala_out, "vic_state.rds"))
 
 
 
 ## QLD - State data ####
 rm(dat)
-dat <- fread(file.path(nonala_data, "qld_state.csv"))
+dat <- fread(file.path(nonala_dir, "qld_state.csv"))
 names(dat)
 
 ## Remove invalid records
@@ -372,13 +373,13 @@ sum(is.na(dat$class))
 sum(is.na(dat$family))
 
 ## Save data table
-saveRDS(dat, file = file.path(nonala_data, "qld_state.rds"))
+saveRDS(dat, file = file.path(nonala_out, "qld_state.rds"))
 
 
 
 ## SA - State data ####
 rm(dat)
-dat <- fread(file.path(nonala_data, "sa_state.csv"))
+dat <- fread(file.path(nonala_dir, "sa_state.csv"))
 names(dat)
 
 ## Remove invalid records (records with an asterix)
@@ -472,13 +473,13 @@ sum(is.na(dat$class))
 sum(is.na(dat$family))
 
 ## Save data table
-saveRDS(dat, file = file.path(nonala_data, "sa_state.rds"))
+saveRDS(dat, file = file.path(nonala_out, "sa_state.rds"))
 
 
 
 ## SA - private data ####
 rm(dat)
-dat <- fread(file.path(nonala_data, "sa_private.csv"))
+dat <- fread(file.path(nonala_dir, "sa_private.csv"))
 names(dat)
 
 ## Valid records
@@ -573,14 +574,14 @@ names(dat) <- dat_cols
 setorder(dat, scientificName)
 str(dat)
 head(dat)
-saveRDS(dat, file = file.path(nonala_data, "sa_private.rds"))
+saveRDS(dat, file = file.path(nonala_out, "sa_private.rds"))
 
 
 
 ## WA - State data ####
 ## Load combined csv
 rm(dat)
-dat <- fread(file.path(nonala_data, "wa_state.csv"))
+dat <- fread(file.path(nonala_dir, "wa_state.csv"))
 names(dat)
 
 ## Year
@@ -677,13 +678,13 @@ sum(is.na(dat$class))
 sum(is.na(dat$family))
 
 ## Save data table
-saveRDS(dat, file = file.path(nonala_data, "wa_state.rds"))
+saveRDS(dat, file = file.path(nonala_out, "wa_state.rds"))
 
 
 
 ## WA - Museum data ####
 rm(dat)
-dat <- fread(file.path(nonala_data, "wa_arachnida_museum.csv"))
+dat <- fread(file.path(nonala_dir, "wa_arachnida_museum.csv"))
 names(dat)
 
 ## Data source
@@ -733,7 +734,7 @@ sum(dat$SYEAR == "")
 
 ## Sensitive records
 dat$sensitive <- rep(NA, nrow(dat))
-wa <- readRDS(file = file.path(nonala_data, "wa_state.rds"))
+wa <- readRDS(file = file.path(nonala_out, "wa_state.rds"))
 wastate_sensitive <- unique(wa[sensitive == 1]$scientificName)
   # dat$scientificName[dat$scientificName %in% wastate_sensitive]
   # length(unique(dat$scientificName[dat$scientificName %in% wastate_sensitive]))
@@ -787,12 +788,218 @@ names(dat) <- dat_cols
 setorder(dat, scientificName)
 str(dat)
 head(dat)
-saveRDS(dat, file = file.path(nonala_data, "wa_museum.rds"))
+saveRDS(dat, file = file.path(nonala_out, "wa_museum.rds"))
+
+
+## ANIC data - combined ####
+rm(dat)
+dat <- fread(file.path(nonala_dir, "anic.csv"))
+names(dat)
+str(dat)
+
+## Remove records without species information
+dim(dat)
+sum(is.na(dat$Identification))
+dim(dat[Identification == ""])
+dat <- dat[Identification != ""]
+
+## Remove na lat/longs
+dim(dat)
+sum(is.na(dat$Latitude))
+dim(dat[Latitude == ""])
+dat <- dat[Latitude != ""]
+
+sum(is.na(dat$Longitude))
+dim(dat[Longitude == ""])
+
+dim(dat)
+
+## Remove records without complete year info
+dim(is.na(dat$Start))
+dim(dat[Start == ""])
+dat <- dat[Start != ""]
+
+dat[grep('[[:alpha:]]', dat$Start)]$Start
+
+dim(dat[Start == "Unknown"])
+dat <- dat[Start != "Unknown"]
+
+dim(dat[Start == "unknown"])
+dat <- dat[Start != "unknown"]
+
+dim(dat[grep("December|Dec|Nov|Jan|Oct|about middle May|June", dat$Start)])
+dat <- dat[!grep("December|Dec|Nov|Jan|Oct|about middle May|June", dat$Start)]
+dat[grep('[[:alpha:]]', dat$Start)]$Start
+
+## Extract year
+dat$year <- year(dmy(dat$Start))
+sort(unique(dat$year), na.last = FALSE)
+
+## Correct records with year = NA where possible
+dat[grep('[[:alpha:]]', dat$Start)]$Start
+dat[grep('18/11/1962 11am', dat$Start)]$year  = 1962
+dat[grep('18/02/1954 11am - 12:30pm', dat$Start)]$year  = 1954
+dat[grep('X/31/1951', dat$Start)]$year  = 1951
+dat[grep('Jul-84', dat$Start)]$year  = 1984
+dat[grep('Jul-34', dat$Start)]$year  = 1934
+dat[grep('May-78', dat$Start)]$year  = 1978
+dat[grep('Jun-70', dat$Start)]$year  = 1970
+dat[grep('Mar-70', dat$Start)]$year  = 1970
+dat[grep('Feb-72', dat$Start)]$year  = 1972
+dat[grep('May-60', dat$Start)]$year  = 1960
+dat[grep('Jun-49', dat$Start)]$year  = 1949
+dat[grep('Mar-57', dat$Start)]$year  = 1957
+dat[grep('May-69', dat$Start)]$year  = 1969
+dat[grep('Apr-33', dat$Start)]$year  = 1933
+dat[grep('Jun-86', dat$Start)]$year  = 1986
+dat[grep('Sep-06', dat$Start)]$year  = 2006
+dat[grep('Feb-73', dat$Start)]$year  = 1973
+
+dat[grep('[[:alpha:]]', dat$Start)]$year
+sort(unique(dat$year), na.last = FALSE)
+sum(is.na(dat$year))
+
+year_idx <- which(is.na(dat$year))
+dat[year_idx]$Start
+
+n_last = 4
+x  <- substr(dat[year_idx]$Start, nchar(dat[year_idx]$Start) - n_last + 1, nchar(dat[year_idx]$Start))
+grep('[[:punct:]]', x, value = TRUE)
+y <- grep('[[:punct:]]', x)
+dat[year_idx[y]]$Start
+
+dat[grep('01/01/972', dat$Start)]$year  = 1972
+dat[grep('01/01/972', dat$Start)]$Start  = "01/01/1972"
+
+dat[grep('08/12/1931.', dat$Start)]$year  = 1931
+dat[grep('08/12/1931.', dat$Start)]$Start  = "08/12/1931"
+
+## Remove records with incorrect info for year (in Start column)
+year_idx <- which(is.na(dat$year))
+x  <- substr(dat[year_idx]$Start, nchar(dat[year_idx]$Start) - n_last + 1, nchar(dat[year_idx]$Start))
+grep('[[:punct:]]', x, value = TRUE)
+y <- grep('[[:punct:]]', x)
+z <- dat[year_idx[y]]$Start
+dat <- dat[!(Start %in% z)]
+
+## Extract year values from Start column for leftover records with year = NA
+dat[which(is.na(dat$year))]$Start
+year_idx <- which(is.na(dat$year))
+x  <- substr(dat[year_idx]$Start, nchar(dat[year_idx]$Start) - n_last + 1, nchar(dat[year_idx]$Start))
+dat[which(is.na(dat$year))]$year <- as.numeric(x)
+
+sum(is.na(dat$year))
+print(setorder(dat[, .N, by = year], year))
+
+dat[year == 2956]
+dat[year == 2956]$year = 1956
+
+dat[year == 9536]
+dat[year == 9536]$year = 1953
+
+dat[year == 9541]
+dat[year == 9541]$year = 1954
+
+dat[year == 0]
+dat <- dat[ year != 0]
+
+## Remove records with year >2020 [TBD]
+print(setorder(dat[, .N, by = year], year))
+dim(dat[year > 2021])
+dat[year > 2021, .N, by = Datasource]
+  # dim <- dat[year <= 2021]
+
+## Sensitive records
+dat$sensitive <- rep(0, nrow(dat))
+
+## Lat/long in WGS84
+dat$Latitude <- as.numeric(dat$Latitude)
+dat$Longitude <- as.numeric(dat$Longitude)
+str(dat)
+
+points_raw <- sp::SpatialPoints(dat[,.(Longitude, Latitude)], proj4string = CRS(wgs_crs))
+
+## Quick plotting
+quickPlot::clearPlot()
+quickPlot::Plot(ausmask,
+                title = "",
+                axes = FALSE,
+                legend = FALSE,
+                col = "khaki",
+                addTo = "fire",
+                new = TRUE)
+quickPlot::Plot(points_raw,
+                cols = "tomato3",
+                title = "",
+                addTo = "ausmask")
+
+## Precise plotting
+plot(ausmask, axes = FALSE, legend = FALSE, box = FALSE)
+plot(points_raw, add = TRUE, pch = 18, col = "tomato3", cex = 0.5)
+
+## Checks for out-of-extent lat/longs
+dim(dat[which(Longitude < ausmask@extent@xmin)])
+dim(dat[which(Longitude > ausmask@extent@xmax)])
+dim(dat[which(Latitude < ausmask@extent@ymin)])
+dim(dat[which(Latitude > ausmask@extent@ymax)])
+
+## Remove points falling off extent
+dim(dat)
+dat <- dat[which(Longitude >= ausmask@extent@xmin)]
+dat <- dat[which(Longitude <= ausmask@extent@xmax)]
+dat <- dat[which(Latitude >= ausmask@extent@ymin)]
+dat <- dat[which(Latitude <= ausmask@extent@ymax)]
+dim(dat)
+
+## Rename data columns
+dat$class <- rep(character(), nrow(dat))
+dat$family <- rep(character(), nrow(dat))
+dat <- dat[,c(1,6,10,11,5,2,3,8,9,7)]
+names(dat) <- dat_cols
+setorder(dat, scientificName)
+str(dat)
+head(dat)
+
+## Get tax info from AFD
+rm(afd_info)
+afd_info <- data.table()
+for (sp in unique(dat$scientificName)){
+  if (length(unique(afd[which(afd$afd_ValidName %in% sp)]$afd_ValidName)) > 1){
+    warning(paste0("More than 1 unique taxon info found for ", sp))
+    
+  } else {
+    if (length(unique(afd[which(afd$afd_ValidName %in% sp)]$afd_ValidName)) == 0) {
+      warning(paste0("No taxon info found for ", sp))
+    } else {
+      x <- unique((afd[.(sp)]))
+      afd_info <- rbind(afd_info, cbind(scientificName = sp, x))
+    }
+  }
+}
+warnings()
+sum(duplicated(afd_info))
+afd_info <- setDT(afd_info, key = "scientificName")
+
+## Add tax info to data
+for (sp in afd_info$scientificName){
+  dat[scientificName == sp]$class = afd_info[scientificName == sp]$afd_Class
+  dat[scientificName == sp]$family = afd_info[scientificName == sp]$afd_Family
+}
+
+sum(is.na(dat$class))
+sum(is.na(dat$family))
+dim(dat[is.na(class) | is.na(family)])
+temp <- unique(dat[is.na(class) | is.na(family)]$scientificName)
+
+## Save
+saveRDS(dat, file = file.path(nonala_out, "anic.rds"))
+write.csv(dat, file = file.path(nonala_out, "anic.csv"), row.names = FALSE)
+write.csv(temp, file = file.path(nonala_out, "anic_taxinfo.csv"), row.names = FALSE)
 
 
 ## Combine datasets& clean ####
 rm(dat)
-dat <- do.call("rbind", lapply(list.files(nonala_data, 
+dat <- do.call("rbind", lapply(list.files(nonala_out, 
                                           pattern = ".rds$", 
                                           full.names = TRUE), readRDS))
 setDT(dat)
@@ -927,9 +1134,9 @@ length(grep("Omoedus orbiculatus", dat$scientificName, value = TRUE))
 length(grep("Zenodorus orbiculatus", dat$scientificName, value = TRUE))
 
 ## JM: Remove species marked as exclude in incomplete_names_nonALA_JRM_highlighted.csv and incomplete_names_nonALA_JRM.csv
-exclude1 <- fread(file.path(nonala_data, "incomplete_names_nonALA_JRM_highlighted.csv"))
+exclude1 <- fread(file.path(nonala_dir, "incomplete_names_nonALA_JRM_highlighted.csv"))
 exclude1 <- exclude1[exclude != ""]
-exclude2 <- fread(file.path(nonala_data, "incomplete_names_nonALA_JRM.csv"))
+exclude2 <- fread(file.path(nonala_dir, "incomplete_names_nonALA_JRM.csv"))
 exclude2 <- exclude2[exclude != ""]
 exclude <- rbind(exclude1, exclude2)
 
@@ -976,7 +1183,7 @@ na_tofill <- c(unique(dat[is.na(class)]$scientificName), unique(dat[is.na(family
 na_tofill <- na_tofill[!duplicated(na_tofill)]
 
 ## Load incomplete_names_nonALA_JRM.csv
-taxinfo <- fread(file.path(nonala_data, "incomplete_names_nonALA_JRM.csv"))
+taxinfo <- fread(file.path(nonala_dir, "incomplete_names_nonALA_JRM.csv"))
 taxinfo <- taxinfo[exclude == ""]
 taxinfo <- taxinfo[,-"exclude"]
 sum(duplicated(taxinfo))

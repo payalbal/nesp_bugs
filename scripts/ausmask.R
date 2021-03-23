@@ -34,6 +34,13 @@ source(file.path(getwd(), "nesp_bugs/scripts/gdal_calc.R"))
   ## See data doc for  QGIS processing on file Topo250kv3AMBIS3islBlnNoaa > aus_lands.gpkg
 auslands <- rgdal::readOGR(file.path(mask_data, "aus_lands.gpkg"))
 unique(auslands$FEATTYPE)
+plot(auslands)
+
+## >> Save as shapefile in Albers Equal Area ####
+aea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+auslands <- spTransform(auslands, aea_crs)
+plot(auslands)
+writeOGR(auslands, dsn = output_dir, layer = "auslands_aea137", driver="ESRI Shapefile")
 
 
 ## >> Save as shapefile in WGS 84 - wgs84.shp ####
@@ -74,12 +81,21 @@ writeOGR(raster(outfile2), dsn = output_dir, layer = "ausmask_noaa_1kmWGS_NA", d
 
 
 ## >> NOAA  mask in Equal area ####
-## See Proj4 in https://spatialreference.org/ref/sr-org/australia-albers-equal-area-conic-134/
-## Reproject to Equal area - 250mEA.tif
+## >>>> Reproject to Albers - 250mEA.tif ####
+## See Proj4 in https://spatialreference.org/ref/epsg/3577/
 infile <- file.path(output_dir, "ausmask_noaa_1kmWGS.tif")
-outfile <- file.path(output_dir, "ausmask_noaa_250mEA.tif")
+outfile <- file.path(output_dir, "ausmask_noaa_250mAlbers.tif")
 source_crs <- crs(raster(infile))
-equalarea_proj <- "+proj=aea +lat_0=0 +lon_0=132 +lat_1=-18 +lat_2=-36 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+equalarea_proj <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=132 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+new_res <-c(250, 250) 
+gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = equalarea_proj, tr = new_res, verbose=TRUE)
+
+## >>>> Reproject to Albers EQUAL AREA- 250mEA.tif ####
+## See Proj4 in https://spatialreference.org/ref/sr-org/australia-albers-equal-area-conic-134/
+infile <- file.path(output_dir, "ausmask_noaa_1kmWGS.tif")
+outfile <- file.path(output_dir, "ausmask_noaa_250mAlbersEA.tif")
+source_crs <- crs(raster(infile))
+equalarea_proj <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 new_res <-c(250, 250) 
 gdalUtils::gdalwarp(srcfile = infile, dstfile = outfile, s_srs = source_crs, t_srs = equalarea_proj, tr = new_res, verbose=TRUE)
 

@@ -132,28 +132,28 @@ message(cat("Number of unique spfile in new dataset: "),
   ## To be fixed further down...
 
 ## Mask data ####
-  # ## >> Load mask in WGS ####
-  # mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
-  # ausmask <- raster::raster(mask_file)
-  # wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-
-## >> Load mask in AEA137 ####
-mask_file <- file.path(output_dir, "masks", "ausmask_noaa_250mAlbersEA_NA.tif")
+## >> Load mask in WGS ####
+mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
 ausmask <- raster::raster(mask_file)
 wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-aea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
-## >>>> Reproject data ro AEA137 ####
-sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
-                    proj4string = CRS(wgs_crs))
-sp_reproj <- sp::spTransform(sp, CRS(aea_crs))
-str(sp_reproj@coords)
-
-plot(ausmask, box = FALSE, axes = FALSE, legend = FALSE)
-plot(sp_reproj, add = TRUE, pch = 17, col = "tomato3", cex = 0.5)
-
-dat$latitude <- sp_reproj@coords[,"latitude"]
-dat$longitude <- sp_reproj@coords[,"longitude"]
+  # ## >> Load mask in AEA137 ####
+  # mask_file <- file.path(output_dir, "masks", "ausmask_noaa_250mAlbersEA_NA.tif")
+  # ausmask <- raster::raster(mask_file)
+  # wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+  # aea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+  # 
+  # ## >>>> Reproject data ro AEA137 ####
+  # sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
+  #                     proj4string = CRS(wgs_crs))
+  # sp_reproj <- sp::spTransform(sp, CRS(aea_crs))
+  # str(sp_reproj@coords)
+  # 
+  # plot(ausmask, box = FALSE, axes = FALSE, legend = FALSE)
+  # plot(sp_reproj, add = TRUE, pch = 17, col = "tomato3", cex = 0.5)
+  # 
+  # dat$latitude <- sp_reproj@coords[,"latitude"]
+  # dat$longitude <- sp_reproj@coords[,"longitude"]
 
 ## >> Check for out-of-extent lat/longs
 dim(dat[which(longitude < ausmask@extent@xmin)])
@@ -173,7 +173,9 @@ message(cat("Proportion of records lost by clipping to mask extent: "),
 
 ## >> Clip data/occurrence points if they fall outside mask polygon(s)
 sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
-                    proj4string = CRS(aea_crs))
+                    proj4string = CRS(wgs_crs))
+  # sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
+  #                     proj4string = CRS(aea_crs))
 grd.pts <-extract(ausmask, sp)
 
 ## Subset data - HERE THERE MIGHT BE PROBLEM WITH ALIGNMENT OF DATA AND MASK
@@ -215,6 +217,13 @@ message(cat("Number of unique scientificName in new dataset: "),
 message(cat("Number of unique spfile in new dataset: "),
         length(unique(dat$spfile)))
   ## To be fixed further down...
+
+
+## Sensitive species update ####
+## Using Aus_listed_spp prepared by JM...
+
+
+## Remove non natives...
 
 
 ## Apply year filter ####
@@ -349,8 +358,7 @@ dat[,new_id := NULL]
 ## This dataset contains all nonALA data and a subset of the ALA data 
 ## i.e., subset of species in ALA found in nonALA data.
 setorder(dat, scientificName)
-# write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"), row.names = FALSE)
-write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_aea137.csv"), row.names = FALSE)
+write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"), row.names = FALSE)
 
 ## Summarise
 print(setorder(dat[, .N, data_source], -N))
@@ -388,7 +396,7 @@ errorlog <- paste0(output_dir, "/errorlog_data_ALAnonALA_", gsub("-", "", Sys.Da
 # errorlog <- paste0("/tempdata/workdir/nesp_bugs/temp/errorlog_ala_byspeciesR_", gsub("-", "", Sys.Date()), ".txt") 
 writeLines(c(""), errorlog)
 
-dat <- fread(file.path(output_dir, "data_ALAnonALA_aea137.csv"))
+dat <- fread(file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
 all_species <- unique(dat$spfile)
 
 start.time <- Sys.time()
