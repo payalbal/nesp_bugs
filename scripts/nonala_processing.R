@@ -907,7 +907,8 @@ dat <- dat[ year != 0]
 print(setorder(dat[, .N, by = year], year))
 dim(dat[year > 2021])
 dat[year > 2021, .N, by = Datasource]
-  # dim <- dat[year <= 2021]
+dim(dat[year <= 2021])
+dat <- dat[year <= 2021]
 
 ## Sensitive records
 dat$sensitive <- rep(0, nrow(dat))
@@ -989,12 +990,49 @@ for (sp in afd_info$scientificName){
 sum(is.na(dat$class))
 sum(is.na(dat$family))
 dim(dat[is.na(class) | is.na(family)])
-temp <- unique(dat[is.na(class) | is.na(family)]$scientificName)
+
+## >> Source taxonomic info (class/family) from JM
+  # temp <- unique(dat[is.na(class) | is.na(family)]$scientificName)
+  # write.csv(temp, file = file.path(nonala_out, "anic_taxinfo.csv"), row.names = FALSE)
+tax_info <- fread(file.path(nonala_out, "anic_taxinfo_JRM.csv"))
+
+## Remove records
+exclude <- tax_info[exclude != ""]
+dim(dat[(scientificName %in% exclude$scientificName)])
+dat <- dat[!(scientificName %in% exclude$scientificName)]
+rm(exclude)
+
+## Replace scientificName with corrected_names
+replace <- tax_info[corrected_name != ""]
+dim(dat[(scientificName %in% replace$scientificName)])
+
+for (sp in replace$scientificName){
+  dat[scientificName == sp]$scientificName  <- replace[scientificName == sp]$corrected_name
+}
+dim(dat[(scientificName %in% replace$scientificName)])
+
+## Add class/family info
+tax_info <- tax_info[exclude == ""]
+tax_info[corrected_name != "", scientificName := corrected_name]
+tax_info <- tax_info[, 1:3]
+
+length(unique(tax_info$scientificName))
+dim(tax_info)[1] - sum(duplicated(tax_info))
+sum(!duplicated(tax_info))
+tax_info <- tax_info[!duplicated(tax_info)]
+
+for (sp in tax_info$scientificName){
+  dat[scientificName == sp]$class = tax_info[scientificName == sp]$class
+  dat[scientificName == sp]$family = tax_info[scientificName == sp]$family
+}
+
+dim(dat[is.na(class) | is.na(family)])
+unique(dat[is.na(class) | is.na(family)]$scientificName)
 
 ## Save
 saveRDS(dat, file = file.path(nonala_out, "anic.rds"))
-write.csv(dat, file = file.path(nonala_out, "anic.csv"), row.names = FALSE)
-write.csv(temp, file = file.path(nonala_out, "anic_taxinfo.csv"), row.names = FALSE)
+# write.csv(dat, file = file.path(nonala_out, "anic.csv"), row.names = FALSE)
+
 
 
 ## Combine datasets& clean ####
@@ -1139,6 +1177,7 @@ exclude1 <- exclude1[exclude != ""]
 exclude2 <- fread(file.path(nonala_dir, "incomplete_names_nonALA_JRM.csv"))
 exclude2 <- exclude2[exclude != ""]
 exclude <- rbind(exclude1, exclude2)
+dim(dat[(scientificName %in% exclude$scientificName)])
 
 dat <- dat[!(scientificName %in% exclude$scientificName)]
 rm(exclude, exclude1, exclude2)
@@ -1176,6 +1215,7 @@ for (sp in afd_info$scientificName){
 
 sum(is.na(dat$class))
 sum(is.na(dat$family))
+dim(dat[is.na(class) | is.na(family)])
 
 ## >> Get class and family information from incomplete_names_nonALA_JRM.csv
 ## List of names with NAs in class/family
@@ -1211,24 +1251,42 @@ for (sp in taxinfo$scientificName){
 
 sum(is.na(dat$class))
 sum(is.na(dat$family))
+dim(dat[is.na(class) | is.na(family)])
 
 ## >> Class/info info remining speces
 na_tofill <- c(unique(dat[is.na(class)]$scientificName), unique(dat[is.na(family)]$scientificName))
 na_tofill <- na_tofill[!duplicated(na_tofill)]
 
-## JM: delete "Phasmatodea sp."
-na_tofill <- na_tofill[-2]
+  ## Info provided by JM
+  ##  [1] "Ewartia sp" > Cicadidae, Insecta
+  ##  [2] "Pterolocera  \"\"K.Fairey 1\"\"" > Anthelidae, Insecta
+  ##  [3] "Pterolocera  \"\"K.Fairey 4\"\"" > Anthelidae, Insecta
+  ##  [4] "Pterolocera  \"\"K.Fairey 6\"\"" > Anthelidae, Insecta
+  ##  [5] "Pterolocera \"\"K. Fairey 1\"\"" > Anthelidae, Insecta
+  ##  [6] "Myrmecia sp." > Formicidae, Insecta
+  ##  [7] "Phasmatodea sp." > delete 
+  ##  [8] "Cheumatopsyche spp." > Hydropsychidae, Insecta
+  ##  [8] "Myrmecia sp. 17" > Formicidae, Insecta
+  ##  [9] "Myrmecia spp." > Formicidae, Insecta 
+  ##  [10] "Triplectides spp." > Leptoceridae, Insecta
+
+## Delete "Phasmatodea sp."
+na_tofill <- na_tofill[!(na_tofill %in% "Phasmatodea sp.")]
 dat <- dat[!(scientificName %in% "Phasmatodea sp.")]
 
-## Info provided by JM
+## Complete info for rest
 taxinfo <- data.table()
 taxinfo$scientificName <- na_tofill
-taxinfo$family <- c("Formicidae", "Hydropsychidae", 
-                    "Formicidae", "Formicidae", "Leptoceridae")
+taxinfo$family <- c("Cicadidae",
+                    rep("Anthelidae", 4),
+                    "Formicidae", 
+                    "Hydropsychidae", 
+                    rep("Formicidae",2), 
+                    "Leptoceridae")
 taxinfo$class <- rep("Insecta", nrow(taxinfo))
 
-  ## Check where the species data is from 
-  unique(dat[scientificName %in% na_tofill]$data_source)
+## Check where the species data is from
+unique(dat[scientificName %in% na_tofill]$data_source)
 
 ## Add tax info to data
 for (sp in taxinfo$scientificName){
@@ -1238,6 +1296,7 @@ for (sp in taxinfo$scientificName){
 
 sum(is.na(dat$class))
 sum(is.na(dat$family))
+dim(dat[is.na(class) | is.na(family)])
 
 ## >> Remove duplictaes ####
 sum(duplicated(dat))
@@ -1323,6 +1382,8 @@ length(unique(dat1$spfile))
 ## >> Save species data file ####
 write.csv(dat1, file = file.path(output_dir, paste0("clean1_nonala_", Sys.Date(),".csv")), 
           row.names = FALSE)
+
+
 
 
 # ## EXTRAS

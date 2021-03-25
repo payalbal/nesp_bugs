@@ -29,13 +29,14 @@ setDT(nonala_data)
 dim(nonala_data)
 length(unique(nonala_data$scientificName))
 length(unique(nonala_data$spfile))
-
-sum(is.na(nonala_data$year))
-sum(nonala_data$year == "", na.rm = TRUE)
   ## There are duplicates in spfile for distinct scientificName.
   ## This problem arises due to simplification of species name for the
   ## improper names found in state/museum data.
   ## To be fixed further down...
+
+sum(is.na(nonala_data$year))
+sum(nonala_data$year == "", na.rm = TRUE)
+
 
 ## >> ALA data cleaned data: clean2_ala_
 ala_data <- fread(list.files(output_dir,
@@ -198,9 +199,7 @@ message(cat("Proportion of data duplicated: "),
         sum(duplicated(dat[,c("scientificName", 
                                "latitude", 
                                "longitude")]))/dim(dat)[1])
-dat[, .N, by = sort(data_source)]
 dat <- setDT(dat)[order(-data_source), .SD[1L] ,.(scientificName, latitude, longitude)]
-dat[, .N, by = sort(data_source)]
   ## How this works: 
   ## > setDT - set as data.table
   ## > order in decreasing order by data_source (i.e. so that alphabetically ALA comes last)
@@ -217,13 +216,6 @@ message(cat("Number of unique scientificName in new dataset: "),
 message(cat("Number of unique spfile in new dataset: "),
         length(unique(dat$spfile)))
   ## To be fixed further down...
-
-
-## Sensitive species update ####
-## Using Aus_listed_spp prepared by JM...
-
-
-## Remove non natives...
 
 
 ## Apply year filter ####
@@ -290,6 +282,7 @@ message(cat("Number of unique species in data: "),
         length(unique(dat$scientificName)))
 
 
+
 ## Complete taxonomic information (if possible) ####
 ## List records with incomplete class/family columns
 message(cat("Number of records with NA class: "),
@@ -306,6 +299,7 @@ message(cat("Number of records with blank string for class: "),
         nrow(dat[class == ""]))
 message(cat("Number of records with blank string for class & family: "),
         nrow(dat[class == "" & family == ""]))
+
 dat[class == "" & family == ""][, .N, data_source]
 unique(dat[class == "" & family == ""]$scientificName)
 # x <- unique(dat[class == "" & family == ""]$scientificName)
@@ -328,17 +322,83 @@ for (sp in taxinfo$species){
   dat[class == "" & family == "" & scientificName %in% sp]$family = taxinfo[species == sp]$family
 }
 
+## Add info for anic
+dat[class == "" & family == ""][, .N, data_source]
+dat[class == "" & family == ""]
+
+## Leftovers
 message(cat("Number of records with blank string for family: "),
         nrow(dat[family == ""]))
+dat[family == ""][, .N, data_source]
+temp <- unique(dat[family == "" & data_source != "ALA"]$scientificName)
+write.csv(temp, file.path(output_dir, "naclass_nonala.csv"), row.names = FALSE)
+
 message(cat("Number of records with blank string for class: "),
         nrow(dat[class == ""]))
+dat[class == ""][, .N, data_source]
 message(cat("Number of records with blank string for class & family: "),
         nrow(dat[class == "" & family == ""]))
 
-## Final formatting
+## Formatting
 head(dat)
 dat$class <- tolower(dat$class)
 dat$family <- tolower(dat$family)
+
+
+## Add sensitive species information as per JM's list ####
+## As per Aus_listed_spp.txt prepared by JM (yxy due to formatting issues)
+sensitive_sp <- as.character(read.csv(file.path(bugs_dir, "Aus_listed_spp.txt"))$Species)
+
+## Fix formattig issues in data sheet
+grep('\\\\', sensitive_sp)
+sensitive_sp[92] <- 'Charopidae "Skemps"'
+sensitive_sp[118] <- "Enchymus sp.nov."
+sensitive_sp[164] <- "Lissotes menalcas"
+sensitive_sp[172] <- "Miselaoma weldii"
+sensitive_sp <- stringi::stri_enc_toutf8(sensitive_sp, validate = TRUE) 
+sensitive_sp[1:3] <- gsub("_", "", sensitive_sp[1:3])
+sensitive_sp <- trimws(sensitive_sp)
+
+dat_sp <- unique(dat$scientificName)
+length(sensitive_sp)
+sum(sensitive_sp %in% dat_sp)
+sum(!(sensitive_sp %in% dat_sp))
+sensitive_sp[!(sensitive_sp %in% dat_sp)]
+
+## Look again for species not found...
+for (sp in sensitive_sp[!(sensitive_sp %in% dat_sp)]) {
+  print(paste0("Lookign for speceis: ", sp, " ..."))
+  if (length(grep(sp, dat$scientificName)) == 0) {
+    print("NOT FOUND")
+  } else{
+    print(grep(sp, dat$scientificName))
+  }
+}
+
+temp <- sensitive_sp[!(sensitive_sp %in% dat_sp)]
+write.csv(temp, file.path(output_dir, "aus_listed_notindata.csv"))
+
+sensitive_sp <- sensitive_sp[sensitive_sp %in% dat_sp]
+for (sp in sensitive_sp){
+  dat[scientificName == sp]$sensitive  <- 1
+}
+
+
+
+## Remove non natives ####
+exotics <- fread(file.path(bugs_dir, "ALA", "GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv"))
+
+dat_sp <- unique(dat$scientificName)
+sum(dat_sp %in% exotics$`Supplied Name`)
+sp1 <- dat_sp[dat_sp %in% exotics$`Supplied Name`]
+sp2 <- dat_sp[dat_sp %in% exotics$scientificName]
+
+sp <- c(sp1, sp2)
+sp <- sp[!duplicated(sp)]
+
+write.csv(sp, file.path(output_dir, "exotics"))
+
+
 
 ## Create new column to give unique ID by scientificName ####
 setDT(dat)[, new_id := .GRP, by = c("scientificName", "class", "family")]
