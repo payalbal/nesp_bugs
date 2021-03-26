@@ -2,6 +2,8 @@
 
 
 ## Set working environment ####
+## _______________________________________________
+
 rm(list = ls())
 gc()
 # system("ps")
@@ -20,7 +22,10 @@ nonala_dir = file.path(bugs_dir, "nonALA")
 output_dir = file.path(bugs_dir, "outputs")
 
 
+
 ## Load datasets ####
+## _______________________________________________
+
 ## >> Non ALA cleaned data: clean1_nonala_
 nonala_data <- fread(list.files(output_dir,
                                 pattern = "clean1_nonala*.*csv$",
@@ -57,11 +62,11 @@ sum(ala_data$year == "", na.rm = TRUE)
 nrow(ala_data[is.na(eventDate) & is.na(year)])
 range(ala_data$year, na.rm = TRUE)
 
-## Find records for which year can be extracted
+## >> Find records for which year can be extracted
 sum(is.na(ala_data$year) & !is.na(ala_data$eventDate))
 id <- which(is.na(ala_data$year) & !is.na(ala_data$eventDate))
 
-## Specify year based in eventDate for records found
+## >> Specify year based in eventDate for records found
 ala_data$eventDate[id]
 range(year(ymd(ala_data$eventDate[id])))
 ala_data$year[id]
@@ -89,6 +94,8 @@ names(ala_data) <- names(nonala_data)
 
 
 ## Find species in non ALA data also found in ALA ####
+## _______________________________________________________________
+
 nonala_sp <- unique(nonala_data$scientificName)
 message(cat("Number of species in non ALA data: "),
         length(nonala_sp))
@@ -108,7 +115,7 @@ message(cat("Number of ALA species NOT found in non ALA data: "),
         length(ala_sp[!(ala_sp %in% nonala_sp)]))
 
 
-  # ## Split ALA data  -- NOT NEEDED ####
+  # ## Split ALA data  -- NOT NEEDED
   # ## >> ALA data for non ALA species
   # ala_sub1 <- ala_data[spfile %in% nonala_sp[nonala_sp %in% ala_sp]]
   # ala_sub1 <- setDT(ala_sub1)
@@ -132,19 +139,23 @@ message(cat("Number of unique spfile in new dataset: "),
         length(unique(dat$spfile)))
   ## To be fixed further down...
 
+
+
 ## Mask data ####
+## _______________________________________________
+
 ## >> Load mask in WGS ####
 mask_file <- file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif")
 ausmask <- raster::raster(mask_file)
 wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
-  # ## >> Load mask in AEA137 ####
+  # ## Load mask in AEA137 - NOT REQUIRED
   # mask_file <- file.path(output_dir, "masks", "ausmask_noaa_250mAlbersEA_NA.tif")
   # ausmask <- raster::raster(mask_file)
   # wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
   # aea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
   # 
-  # ## >>>> Reproject data ro AEA137 ####
+  # ## Reproject data to AEA137 - NOT REQUIRED
   # sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
   #                     proj4string = CRS(wgs_crs))
   # sp_reproj <- sp::spTransform(sp, CRS(aea_crs))
@@ -156,13 +167,15 @@ wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
   # dat$latitude <- sp_reproj@coords[,"latitude"]
   # dat$longitude <- sp_reproj@coords[,"longitude"]
 
-## >> Check for out-of-extent lat/longs
+
+## >> Check for out-of-extent lat/longs ####
 dim(dat[which(longitude < ausmask@extent@xmin)])
 dim(dat[which(longitude > ausmask@extent@xmax)])
 dim(dat[which(latitude < ausmask@extent@ymin)])
 dim(dat[which(latitude > ausmask@extent@ymax)])
 
-## >> Remove points falling off extent (if any)
+
+## >> Remove points falling off extent (if any) ####
 n <- dim(dat)[1]
 dat <- dat[which(longitude >= ausmask@extent@xmin)]
 dat <- dat[which(longitude <= ausmask@extent@xmax)]
@@ -172,19 +185,20 @@ dat <- dat[which(latitude <= ausmask@extent@ymax)]
 message(cat("Proportion of records lost by clipping to mask extent: "),
         (n-dim(dat)[1])/n)
 
-## >> Clip data/occurrence points if they fall outside mask polygon(s)
+
+## >> Clip data/occurrence points if they fall outside mask polygon(s) ####
 sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
                     proj4string = CRS(wgs_crs))
   # sp <- SpatialPoints(dat[,c("longitude", "latitude")], 
   #                     proj4string = CRS(aea_crs))
 grd.pts <-extract(ausmask, sp)
 
-## Subset data - HERE THERE MIGHT BE PROBLEM WITH ALIGNMENT OF DATA AND MASK
 dat0 <- dat[is.na(grd.pts),]
 dat <- dat[!is.na(grd.pts),]
 
 message(cat("Proportion of records lost due to falling on NAs within the mask: "),
         dim(dat0)[1]/dim(dat)[1])
+
 
 ## >> Precise plotting
 points1 <- sp::SpatialPoints(dat[,.(longitude, latitude)], proj4string = CRS(wgs_crs))
@@ -194,7 +208,10 @@ plot(points1, add = TRUE, pch = 18, col = "tomato3", cex = 0.5)
 plot(points0, add = TRUE, pch = 18, col = "green", cex = 0.5)
 
 
+
 ## Find duplicates and prioritise ALA records for removal ####
+## _______________________________________________________________
+
 message(cat("Proportion of data duplicated: "),
         sum(duplicated(dat[,c("scientificName", 
                                "latitude", 
@@ -209,16 +226,11 @@ dat <- setDT(dat)[order(-data_source), .SD[1L] ,.(scientificName, latitude, long
   ## Ref: https://cran.r-project.org/web/packages/data.table/vignettes/datatable-sd-usage.html
   ## Ref: https://stackoverflow.com/questions/8508482/what-does-sd-stand-for-in-data-table-in-r
 
-message(cat("Number of records left in cleaned data: "),
-        dim(dat)[1])
-message(cat("Number of unique scientificName in new dataset: "),
-        length(unique(dat$scientificName)))
-message(cat("Number of unique spfile in new dataset: "),
-        length(unique(dat$spfile)))
-  ## To be fixed further down...
 
 
 ## Apply year filter ####
+## ___________________________________________________
+
 ## >> Find records without year information
 plot(dat[!is.na(year)][, .N, year], xaxp = c(1630, 2020, 10), pch = 20)
 range(dat$year, na.rm = TRUE)
@@ -233,6 +245,7 @@ message(cat("Proportion of records with year < 1990: "),
 
 message(cat("Proportion of records lost if applying year filer on records with year=NA or year < 1990: "),
         nrow(dat[is.na(year) | year < 1990])/nrow(dat))
+
 
 ## >> Number of records lost with year filter
 t1 <- dat[, .N, scientificName]
@@ -253,6 +266,7 @@ message(cat("Number of species with >= 3 records after filter for 1990 and NAs: 
         nrow(t[n.sub >= 3])); nrow(t[n.sub >= 3])/nrow(t)
 message(cat("Number of species with < 3 records after filter but which has >=3 records before filter: "),
         nrow(t[n.sub < 3 & n.all >=3]))
+
 
 ## >> Remove records based on filter rule: 
 ##  if >= 3 records after filter, remove NA and <1990
@@ -283,8 +297,11 @@ message(cat("Number of unique species in data: "),
 
 
 
+
 ## Complete taxonomic information (if possible) ####
-## List records with incomplete class/family columns
+## ___________________________________________________
+
+## >> List records with incomplete class/family columns ####
 message(cat("Number of records with NA class: "),
         nrow(dat[is.na(class)]))
 message(cat("Number of records with NA family: "),
@@ -302,10 +319,11 @@ message(cat("Number of records with blank string for class & family: "),
 
 dat[class == "" & family == ""][, .N, data_source]
 unique(dat[class == "" & family == ""]$scientificName)
-# x <- unique(dat[class == "" & family == ""]$scientificName)
-# write.csv(x, file.path(output_dir, "incomplete_taxinfo.csv"), row.names = FALSE)
+  # x <- unique(dat[class == "" & family == ""]$scientificName)
+  # write.csv(x, file.path(output_dir, "incomplete_taxinfo.csv"), row.names = FALSE)
 
-## Delete records as per incomplete_taxinfo_JRM.csv
+
+## >> Delete records as per incomplete_taxinfo_JRM.csv ####
 taxinfo <- fread(file.path(output_dir, "incomplete_taxinfo_JRM.csv"))
 dropspecies <- taxinfo[exclude != ""]$species
 taxinfo <- taxinfo[exclude == ""]
@@ -316,45 +334,92 @@ nrow(dat) - nrow(dat[!(scientificName %in% dropspecies)])
 
 dat <- dat[!(scientificName %in% dropspecies)]
 
-## Populate class/family columns as per incomplete_taxinfo_JRM.csv
+
+## >> Populate class/family columns as per incomplete_taxinfo_JRM.csv ####
 for (sp in taxinfo$species){
   dat[class == "" & family == "" & scientificName %in% sp]$class = taxinfo[species == sp]$class
   dat[class == "" & family == "" & scientificName %in% sp]$family = taxinfo[species == sp]$family
 }
 
-## Add info for anic
+
+## >> Add taxonominc info for anic ####
+## Coenobiodes, Insecta, Tortricidae : provided by JM
 dat[class == "" & family == ""][, .N, data_source]
 dat[class == "" & family == ""]
+dat[class == "" & family == ""]$class <- "Insecta"
+dat[class == "" & family == ""]$family <- "Tortricidae"
 
-## Leftovers
-message(cat("Number of records with blank string for family: "),
-        nrow(dat[family == ""]))
-dat[family == ""][, .N, data_source]
-temp <- unique(dat[family == "" & data_source != "ALA"]$scientificName)
-write.csv(temp, file.path(output_dir, "naclass_nonala.csv"), row.names = FALSE)
-
-message(cat("Number of records with blank string for class: "),
-        nrow(dat[class == ""]))
-dat[class == ""][, .N, data_source]
-message(cat("Number of records with blank string for class & family: "),
+message(cat("Number of records with blank string for class AND family: "),
         nrow(dat[class == "" & family == ""]))
+dat[family == "" | class == ""][, .N, data_source]
+unique(dat[family == "" & data_source != "ALA"]$scientificName)
+  # temp <- unique(dat[family == "" & data_source != "ALA"]$scientificName)
+  # write.csv(temp, file.path(output_dir, "naclass_nonala.csv"), row.names = FALSE)
 
-## Formatting
+
+## >> Populate class/family columns as per naclass_nonala_JRM.csv ####
+taxinfo <- fread(file.path(output_dir, "naclass_nonala_JRM.csv"))
+for (sp in taxinfo$species){
+  dat[(class == "" | family == "") & scientificName %in% sp]$class = taxinfo[species == sp]$class
+  dat[(class == "" | family == "") & scientificName %in% sp]$family = taxinfo[species == sp]$family
+}
+
+dat[family == "" | class == ""][, .N, data_source]
+
+dat[(family == "" | class == "") & data_source == "anic_moths"]
+dat[(family == "" | class == "") & data_source == "anic_moths"]$family <- "Tortricidae"
+
+dat[(family == "" | class == "") & data_source == "SA_Churchett_Q26508-3"]
+dat[(family == "" | class == "") & data_source == "SA_Churchett_Q26508-3"]$family <- "Formicidae"
+ 
+message(cat("Number of records with blank string for family OR class: "),
+        nrow(dat[family == "" | class == ""]))
+
+dat[family == "" | class == ""][, .N, data_source]
+unique(dat[family == "" | class == ""]$scientificName)
+temp <- dat[family == "" | class == ""]
+temp <- temp[,.(scientificName, class, family)]
+temp <- temp[!duplicated(temp)]
+write.csv(temp, file.path(output_dir, "naclassfamily_ala.csv"), row.names = FALSE)
+
+
+## >> Populate class/family columns as per naclassfamily_ala_JRM.csv ####
+taxinfo <- fread(file.path(output_dir, "naclassfamily_ala_JRM.csv"))
+dropspecies <- taxinfo[exclude != ""]$species
+taxinfo <- taxinfo[exclude == ""]
+dat <- dat[!(scientificName %in% dropspecies)]
+
+for (sp in taxinfo$species){
+  dat[(class == "" | family == "") & scientificName %in% sp]$class = taxinfo[species == sp]$class
+  dat[(class == "" | family == "") & scientificName %in% sp]$family = taxinfo[species == sp]$family
+}
+
+message(cat("Number of records with blank string for family OR class: "),
+        nrow(dat[family == "" | class == ""]))
+message(cat("Number of species with blank string for family OR class: "),
+        length(unique(dat[family == "" | class == ""]$scientificName)))
+  ## leftover species do not have class or family values assigned yet
+
+## >> Formatting class & family columns ####
 head(dat)
 dat$class <- tolower(dat$class)
 dat$family <- tolower(dat$family)
 
 
-## Add sensitive species information as per JM's list ####
-## As per Aus_listed_spp.txt prepared by JM (yxy due to formatting issues)
-sensitive_sp <- as.character(read.csv(file.path(bugs_dir, "Aus_listed_spp.txt"))$Species)
 
-## Fix formattig issues in data sheet
+## Add sensitive species information as per JM's list ####
+## ____________________________________________________________________
+
+sensitive_sp <- fread(file.path(bugs_dir, "aus_listed", "Aus_listed_spp.csv"))$Species
+
+## Fix funny formattig issues in data sheet
 grep('\\\\', sensitive_sp)
 sensitive_sp[92] <- 'Charopidae "Skemps"'
 sensitive_sp[118] <- "Enchymus sp.nov."
 sensitive_sp[164] <- "Lissotes menalcas"
 sensitive_sp[172] <- "Miselaoma weldii"
+grep('\\\\', sensitive_sp)
+
 sensitive_sp <- stringi::stri_enc_toutf8(sensitive_sp, validate = TRUE) 
 sensitive_sp[1:3] <- gsub("_", "", sensitive_sp[1:3])
 sensitive_sp <- trimws(sensitive_sp)
@@ -363,7 +428,6 @@ dat_sp <- unique(dat$scientificName)
 length(sensitive_sp)
 sum(sensitive_sp %in% dat_sp)
 sum(!(sensitive_sp %in% dat_sp))
-sensitive_sp[!(sensitive_sp %in% dat_sp)]
 
 ## Look again for species not found...
 for (sp in sensitive_sp[!(sensitive_sp %in% dat_sp)]) {
@@ -374,11 +438,22 @@ for (sp in sensitive_sp[!(sensitive_sp %in% dat_sp)]) {
     print(grep(sp, dat$scientificName))
   }
 }
+sensitive_sp1 <- sensitive_sp[sensitive_sp %in% dat_sp]
 
-temp <- sensitive_sp[!(sensitive_sp %in% dat_sp)]
-write.csv(temp, file.path(output_dir, "aus_listed_notindata.csv"))
+  # temp <- sensitive_sp[!(sensitive_sp %in% dat_sp)]
+  # write.csv(temp, file.path(bugs_dir, "aus_listed",, "aus_listed_notindata.csv"))
 
-sensitive_sp <- sensitive_sp[sensitive_sp %in% dat_sp]
+## See aus_listed_notindata_JRM.csv
+sensitive_sp2 <- fread(file.path(bugs_dir, "aus_listed", "aus_listed_notindata_JRM.csv"))
+dropspecies <- sensitive_sp2[exclude != ""]$species
+dat <- dat[!(scientificName %in% dropspecies)] ## none found
+
+sensitive_sp2 <- sensitive_sp2[exclude == ""]
+sensitive_sp2[name_in_ala != "", species := name_in_ala]
+sensitive_sp2 <- sensitive_sp2$species
+
+sensitive_sp <- c(sensitive_sp1, sensitive_sp2)
+
 for (sp in sensitive_sp){
   dat[scientificName == sp]$sensitive  <- 1
 }
@@ -386,24 +461,62 @@ for (sp in sensitive_sp){
 
 
 ## Remove non natives ####
-exotics <- fread(file.path(bugs_dir, "ALA", "GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv"))
+## _____________________________________________________________
+exotics <- fread(file.path(bugs_dir, "ALA", 
+                           "GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv"))
 
 dat_sp <- unique(dat$scientificName)
 sum(dat_sp %in% exotics$`Supplied Name`)
-sp1 <- dat_sp[dat_sp %in% exotics$`Supplied Name`]
-sp2 <- dat_sp[dat_sp %in% exotics$scientificName]
+sum(dat_sp %in% exotics$scientificName)
+exotic1 <- dat_sp[dat_sp %in% exotics$`Supplied Name`]
+exotic2 <- dat_sp[dat_sp %in% exotics$scientificName]
 
-sp <- c(sp1, sp2)
-sp <- sp[!duplicated(sp)]
+exotics <- c(exotic1, exotic2)
+exotics <- exotics[!duplicated(exotics)]
 
-write.csv(sp, file.path(output_dir, "exotics"))
+dim(dat[(scientificName %in% exotics)])
+dat <- dat[!(scientificName %in% exotics)]
+
+
+
+## Final data checks ####
+## _____________________________________________________________
+message(cat("Number of records in cleaned data: "),
+        dim(dat)[1])
+message(cat("Number of unique scientificName in new dataset: "),
+        length(unique(dat$scientificName)))
+
+message(cat("Number of records with blank string for family OR class: "),
+        nrow(dat[family == "" | class == ""]))
+message(cat("Number of species with blank string for family OR class: "),
+        length(unique(dat[family == "" | class == ""]$scientificName)))
+
+message(cat("Duplicated records: "),
+        sum(duplicated(dat[,c("scientificName", "latitude", "longitude")])))
+
+message(cat("Records without year info: "),
+        sum(is.na(dat$year)))
 
 
 
 ## Create new column to give unique ID by scientificName ####
+## _____________________________________________________________
 setDT(dat)[, new_id := .GRP, by = c("scientificName", "class", "family")]
 length(unique(dat$new_id))
 range(unique(dat$new_id))
+length(unique(dat$scientificName))
+
+  # temp <- c()
+  # for (sp in unique(dat$scientificName)){
+  #   if(length(unique(dat[scientificName %in% sp]$new_id)) > 1){
+  #     temp <- c(temp, sp)
+  #   }
+  # }
+  # temp
+  # ## a number of species with uninfomrative names
+  # x <- "`indet.`"
+  # unique(grep(x, dat$scientificName, value = TRUE))
+  # dat[grep(x, dat$scientificName)]
 
 ## Merge spfile and new_ID (overwrite existing spfile column)
 dat$spfile <- paste0(dat$spfile, "_", dat$new_id)
@@ -414,7 +527,10 @@ message(cat("Number of unique spfile in new dataset: "),
 dat[,new_id := NULL]
 
 
+
+
 ## Save combined data table - WGS 84 ####
+## _____________________________________________________________
 ## This dataset contains all nonALA data and a subset of the ALA data 
 ## i.e., subset of species in ALA found in nonALA data.
 setorder(dat, scientificName)
@@ -429,8 +545,13 @@ message(cat("proportion of data from non-ALA sources: "),
         round(x[data_source == FALSE]$N/dim(dat)[1], 2))
 
 
+
+
 ## Save rds files by species ####
+## _____________________________________________________________
 spdata_dir <- file.path(output_dir, "ala_nonala_data" ,"spdata")
+  # file.remove(file.path(spdata_dir, dir(path = spdata_dir)))
+  # unlink(spdata_dir, recursive = TRUE, force = TRUE)
 if(!dir.exists(spdata_dir)){dir.create(spdata_dir)}
 
 ## Save by species (reduced) function

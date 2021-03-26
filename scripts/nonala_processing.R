@@ -1143,7 +1143,7 @@ grep("gen.", dat$scientificName, value = TRUE)
   # t <- setDT(t)[order(scientificName), .SD[1L] ,.(data_source, class, family, scientificName)]
   # dim(t)
   # t <- t[,.(data_source, class, family, scientificName)]
-  # write.csv(t, file = file.path(output_dir, "incomplete_names_nonALA.csv"), row.names = FALSE)
+  # write.csv(t, file = file.path(nonala_dir, "incomplete_names_nonALA.csv"), row.names = FALSE)
 
 ## JM: Supunna picta to be replaced by synonym Nyssus coloripes
 ## See incomplete_names_nonALA_JRM_highlighted.xlsx
