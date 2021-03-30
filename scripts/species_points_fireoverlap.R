@@ -27,11 +27,12 @@ source("/tempdata/workdir/nesp_bugs/scripts/points_overlap.R")
 ## >> Load species  names without EOOs
 points_list <- fread(file.path(output_dir, paste0("species_ahullnoEOO.csv")))
 points_list <- points_list$x
+length(points_list)
 
 ## >> Find species data rds files
 spfiles <- list.files(spdata_dir, pattern= ".rds$", full.names = TRUE)
 x <- basename(tools::file_path_sans_ext(spfiles))
-spfiles <- spfiles[x %in% points_list] ## subset spfiles for all IUCN species
+spfiles <- spfiles[x %in% points_list]
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
 fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
@@ -75,62 +76,85 @@ names(out)[1] <- "spfile"
 setDT(out, key = "spfile")
 
 message(cat("Check if #points overlapping with fire is always <= Total # points for species: "),
-        all(out$Total_Overlap <= out$Occurrence_Points))
+        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3)]) <= out$Occurrence_Points))
+
+## Look for NAs in table
+message(cat("Check for NAs: "),
+        sum(is.na(out)))
+
+## Look for Species_Polygon = 0 in table
+message(cat("Number of species with Occurrence_Points = 0: "),
+        sum(out$Occurrence_Points == 0))
+
+
+## Add percentage overlap
+out$Percent_Overlap <- ((out$Fire_Class_2 + out$Fire_Class_3)/(out$Occurrence_Points - out$Fire_Class_1)) * 100
+sum(is.na(out$Percent_Overlap))
+naidx <- which(is.na(out$Percent_Overlap))
+out[naidx]
+
 
 ## Add class/family information to output table
-tax <- fread(file = file.path(output_dir, "data_ALAnonALA.csv"))
+tax <- fread(file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
 tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, family, spfile)]
 tax <- tax[,.(scientificName, class, family, spfile)]
 tax <- tax[spfile %in% out$spfile]
 
-dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
+dim(out); length(unique(out$spfile))
 dim(tax); length(unique(tax$spfile)); length(unique(tax$scientificName))
 
 out <- merge(out, tax, by = "spfile")
-out <- out[,c(10:8, 2:7, 1)]
 
 ## Save output table
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"), row.names = FALSE)
 
 
+## Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
+polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
+polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, AOO, Nbe_unique_occ., scientificName)]
+
+dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
+dim(polyareas); length(unique(polyareas$spfile)); length(unique(polyareas$scientificName))
+
+# ## Check
+out2 <- merge(out, polyareas, by = "spfile")
+all(out2$scientificName.x == out2$scientificName.y)
+which(!(out2$scientificName.x == out2$scientificName.y))
+out2[which(!(out2$scientificName.x == out2$scientificName.y))]
+  ## out2$scientificName.x & out2$scientificName.y are the same
+
+polyareas[, scientificName := NULL]
+out <- merge(out, polyareas, by = "spfile")
+write.csv(out, file = file.path(output_dir, "species_points_fireoverlap_AOOinfo.csv"), 
+          row.names = FALSE)
+
+
 ## Remove files ####
-file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
-unlink(shapefile_dir, recursive = TRUE)
-unlink(overlap_dir, recursive = TRUE)
+# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+# unlink(overlap_dir, recursive = TRUE)
 
 
 ## Summarize outputs ####
-point.sp <- fread(file.path(output_dir, "species_points_fireoverlap.csv"))
+out <- fread(file.path(output_dir, "species_points_fireoverlap.csv"))
 message(cat("NA in scientificName: "),
-        length(which(is.na(point.sp$scientificName))))
+        length(which(is.na(out$scientificName))))
 
 message(cat("Total number of species: "),
-        nrow(point.sp))
+        nrow(out))
 
 message(cat("Number of species showing overlap: "))
-point.sp[, .N, by = Total_Overlap]
-
-message(cat("# Species showing 100% fire overlap: "),
-        nrow(point.sp[Percent_Overlap == 100]));
-round(nrow(point.sp[Percent_Overlap == 100])/nrow(point.sp), 2)
+out[, .N, by = Occurrence_Points]
 
 ## Unique class-family summaries in 100% overlap
-point.sp[Percent_Overlap == 100][, .SD[1L] ,.(class, family)][,.(class,family)]
-point.sp[Percent_Overlap == 100][, .SD[1L] ,.(class)][,.(class)][, .N, class]
-point.sp[Percent_Overlap == 100][, .SD[1L] ,.(family)][,.(family)][, .N, family]
+out[Percent_Overlap == 100][, .SD[1L] ,.(class, family)][,.(class,family)]
+out[Percent_Overlap == 100][, .SD[1L] ,.(class)][,.(class)][, .N, class]$class
+out[Percent_Overlap == 100][, .SD[1L] ,.(family)][,.(family)][, .N, family]
 
-message(cat("# Species showing == 100% fire overlap: "),
-        nrow(point.sp[Percent_Overlap == 100]));
-round(nrow(point.sp[Percent_Overlap == 100])/nrow(point.sp), 2)
-
-message(cat("# Species showing > 50% fire overlap: "),
-        nrow(point.sp[Percent_Overlap == 50]));
-round(nrow(point.sp[Percent_Overlap == 50])/nrow(point.sp), 2)
-
-message(cat("# Species showing no fire overlap: "),
-        nrow(point.sp[Percent_Overlap == 0]))
-round(nrow(point.sp[Percent_Overlap == 0])/nrow(point.sp), 2)
+## High severity overlaps
+fire3_overlap <- out$Fire_Class_3/out$Occurrence_Points
+message(cat("Number of species with high fire severity impact on all (n = 2) recorded data points: "),
+        length(which(fire3_overlap == 1)))
 
 
 

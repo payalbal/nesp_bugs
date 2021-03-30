@@ -15,6 +15,8 @@ polygon_overlap <- function(species_name, species_poly, shapefile_dir, fire_vals
   system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 -s_srs 'EPSG:4326' -t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ",
                 file.path(shapefile_dir, species_name), ".tif ",
                 file.path(shapefile_dir, species_name), "_p.tif"))
+    ## extent clips out islands, but we need to do this because fire map has this extent!
+  
   
   ## Create table of areas within each fire class
   species_map <- raster(paste0(file.path(shapefile_dir, species_name), "_p.tif"))
@@ -38,15 +40,11 @@ polygon_overlap <- function(species_name, species_poly, shapefile_dir, fire_vals
 }
 
 
-
-## Previously...
-# df <- data.frame(matrix(ncol = length(fire_classes) + 4))
-# df[ , 1] <- species_name
-# df[ , -c(1, (ncol(df)-2):ncol(df))] <- sapply(fire_classes, FUN = function(x) dt[species_map == 1 & fire_severity == x, length(fire_severity) * 250 * 250 / 1000000])
-# df[ , ncol(df)-2] <- rowSums(df[, -c(1, (ncol(df)-2):ncol(df))])
-# df[ , ncol(df)-1] <- dt[species_map == 1, length(species_map)* 250 * 250 / 1000000]
-# df[ , ncol(df)] <- (df[ , ncol(df)-2]/df[ , ncol(df)-1])*100
-# colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), 
-#                   "Total_Overlap", "Species_Polygon", "Percent_Overlap")
+# ## To include species that are on islands, and lie off the fire map
+# ## To use this we woudl need to extend the extent of the fire map
+# system(paste0("gdalwarp -overwrite -ot Byte -te -4493436.0 -6839453.5 3234148.7 -955558.6 -tr 250 250 -s_srs 'EPSG:4326' -t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ",
+#               file.path(shapefile_dir, species_name), ".tif ",
+#               file.path(shapefile_dir, species_name), "_p.tif"))
+# ## extent including islands, but we cannot use this because fire map will have different extent
 
 

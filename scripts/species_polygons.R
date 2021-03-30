@@ -96,7 +96,7 @@ hull.method <- "alpha.hull" # "convex.hull"
 
 ## >> Batch rerun for species showing errors ####
 ## List species not in output files
-errorlog <- file.path(output_dir, "errorlog_species_polygons_20210308.txt")
+errorlog <- file.path(output_dir, "errorlog_species_polygons_20210326.txt")
 errorfiles <- trimws(readLines(errorlog)[-1])
 message(cat("Number of species showing errors: "),
         length(errorfiles))
@@ -121,7 +121,8 @@ system.time(invisible(mclapply(errorfiles,
                                working_dir = working_error_dir,
                                iucn_outpath = polygons_error_dir,
                                mc.cores = mc.cores)))
-  ## >> Warning message:
+  
+## >> Warning message:
   ## In mclapply(errorfiles, conr_iucn_eval, hull.method = hull.method,  :
   ##              scheduled cores ... encountered errors 
   ##              in user code, all values of the jobs will be affected
@@ -150,7 +151,7 @@ basemap <- readOGR(basemap_file)
 
 ## Read species data
 length(errorfiles)
-dat <- as.data.table(readRDS(errorfiles[1]))
+dat <- as.data.table(readRDS(errorfiles[3]))
 dim(dat)
 spname <- unique(dat$spfile)
 message(cat("Processing species... ",
@@ -193,7 +194,7 @@ message(cat("Number of .rds output files created from IUCN.eval(): "),
 error_sp <- basename(tools::file_path_sans_ext(errorfiles))
 sp1 <- basename(tools::file_path_sans_ext(rdsfiles2))
 error_sp[!error_sp %in% sp1]
-
+errorfiles <- errorfiles[!error_sp %in% sp1]
 
 ## >> Visualise species with unresolved errors ####
 errorfiles <- errorfiles[!error_sp %in% sp1]
@@ -328,7 +329,7 @@ write.csv(out, file = file.path(output_dir, "species_EOO_AOO_ahullareas.csv"),
 
 message(cat("#species with EOOs: "),
         nrow(out[!is.na(EOO)]))
-message(cat("#species without EOOs: "),
+message(cat("#species without EOOs (including 6 error species): "),
         nrow(out[is.na(EOO)]))
 message(cat("max #records for species without EOOs (excluding species with errors): "),
         max(out[!(scientificName %in% temp$scientificName) & is.na(EOO)]$Nbe_unique_occ.))
