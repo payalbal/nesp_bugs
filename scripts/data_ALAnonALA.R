@@ -544,7 +544,8 @@ message(cat("proportion of data from ALA: "),
 message(cat("proportion of data from non-ALA sources: "),
         round(x[data_source == FALSE]$N/dim(dat)[1], 2))
 
-
+x <- setorder(dat[, .N, data_source], -N)
+sum(x[grep("WA", x$data_source),]$N)
 
 
 ## Save rds files by species ####

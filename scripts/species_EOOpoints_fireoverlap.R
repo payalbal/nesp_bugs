@@ -1,7 +1,7 @@
 ## Fire overlap analysis: foreach{}
 ## Collaborator: Casey Visintin
 
-## Points overlap for species with 1-2 records only
+## Points overlap for species with 3+ records
 
 
 ## Set working environment ####
@@ -19,16 +19,16 @@ bugs_data = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_data, "outputs")
 spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 
-overlap_dir = file.path(output_dir, "points_overlap")
+overlap_dir = file.path(output_dir, "EOO_points_overlap")
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
 source("/tempdata/workdir/nesp_bugs/scripts/points_overlap.R")
 
 
-## Fire overlap for species WITHOUT EOO polygons  ####
-## >> Load species  names without EOOs
-points_list <- fread(file.path(output_dir, paste0("species_ahullnoEOO.csv")))
-points_list <- points_list$x
+## Fire overlap for species WITH EOO polygons  ####
+## >> Load species  names with EOOs
+points_list <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
+points_list <- names(points_list)
 length(points_list)
 
 ## >> Find species data rds files
@@ -46,23 +46,22 @@ eqarea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0
 
 ## >> Run overlap analysis in parallel: doMC ####
 registerDoMC(future::availableCores()-2)
-system.time(log <- foreach(species_dat = spfiles, 
-                           .combine = rbind,
-                           .errorhandling = "pass",
-                           .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
-                             
-                             points_overlap(data_rds = species_dat, 
-                                            crs_org = wgs_crs, 
-                                            crs_new = eqarea_crs, 
-                                            fire_classes = fire_classes,
-                                            outdir = overlap_dir)
-                           })
+system.time(foreach(species_dat = spfiles, 
+                    .combine = rbind,
+                    .errorhandling = "pass",
+                    .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
+                      
+                      points_overlap(data_rds = species_dat, 
+                                     crs_org = wgs_crs, 
+                                     crs_new = eqarea_crs, 
+                                     fire_classes = fire_classes,
+                                     outdir = overlap_dir)
+                    })
 
 
 
 
 ## Error checking ####
-log
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of input species: "),
@@ -109,26 +108,31 @@ out <- merge(out, tax, by = "spfile")
 
 ## Save output table
 setDT(out, key = "spfile")
-write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"), row.names = FALSE)
+write.csv(out, file = file.path(output_dir, "species_EOOpoints_fireoverlap.csv"), row.names = FALSE)
 
 
-## Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
-polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
-polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, AOO, Nbe_unique_occ., scientificName)]
+## Merge with polygon overlap table
+temp <- fread(file.path(output_dir, "species_polygon_fireoverlap_EOOinfo.csv"))
+names(temp)[c(2:4,6)] <- paste0(names(temp)[c(2:4,6)], "_Area")
+setDT(temp, key = "spfile")
 
-dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
-dim(polyareas); length(unique(polyareas$spfile)); length(unique(polyareas$scientificName))
+names(out)[c(2:4,6)] <- paste0(names(out)[c(2:4,6)], "_Npoints")
+out[, class := NULL]; out[, family := NULL]
+setDT(out, key = "spfile")
 
 # ## Check
-out2 <- merge(out, polyareas, by = "spfile")
+out2 <- merge(temp, out, by = "spfile")
 all(out2$scientificName.x == out2$scientificName.y)
 which(!(out2$scientificName.x == out2$scientificName.y))
-out2[which(!(out2$scientificName.x == out2$scientificName.y))]
-  ## out2$scientificName.x & out2$scientificName.y are the same
 
-polyareas[, scientificName := NULL]
-out <- merge(out, polyareas, by = "spfile")
-write.csv(out, file = file.path(output_dir, "species_points_fireoverlap_AOOinfo.csv"), 
+all(out2$Nbe_unique_occ. == out2$Occurrence_Points)
+
+out[, scientificName := NULL]
+out[, Nbe_unique_occ. := NULL]
+out <- merge(temp, out, by = "spfile")
+
+out <- out[ , c(1,7,8,9,2:6,12:16,10,11)]
+write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap_allinfo.csv"),
           row.names = FALSE)
 
 

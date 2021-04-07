@@ -1,6 +1,8 @@
 ## Fire overlap analysis: foreach{}
 ## Collaborator: Casey Visintin
 
+## Polygon overlap for species with 3+ records
+
 
 ## Set working environment ####
 rm(list = ls())
