@@ -19,7 +19,7 @@ bugs_data = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_data, "outputs")
 spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 
-overlap_dir = file.path(output_dir, "EOO_points_overlap")
+overlap_dir = file.path(output_dir, "polygon_points_overlap")
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
 source("/tempdata/workdir/nesp_bugs/scripts/points_overlap.R")
@@ -139,29 +139,3 @@ write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap_allinfo
 ## Remove files ####
 # file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
 # unlink(overlap_dir, recursive = TRUE)
-
-
-## Summarize outputs ####
-out <- fread(file.path(output_dir, "species_points_fireoverlap.csv"))
-message(cat("NA in scientificName: "),
-        length(which(is.na(out$scientificName))))
-
-message(cat("Total number of species: "),
-        nrow(out))
-
-message(cat("Number of species showing overlap: "))
-out[, .N, by = Occurrence_Points]
-
-## Unique class-family summaries in 100% overlap
-out[Percent_Overlap == 100][, .SD[1L] ,.(class, family)][,.(class,family)]
-out[Percent_Overlap == 100][, .SD[1L] ,.(class)][,.(class)][, .N, class]$class
-out[Percent_Overlap == 100][, .SD[1L] ,.(family)][,.(family)][, .N, family]
-
-## High severity overlaps
-fire3_overlap <- out$Fire_Class_3/out$Occurrence_Points
-message(cat("Number of species with high fire severity impact on all (n = 2) recorded data points: "),
-        length(which(fire3_overlap == 1)))
-
-
-
-

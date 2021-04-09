@@ -1,6 +1,6 @@
 ## Fire overlap analysis function for species points
 
-points_overlap <- function(data_rds, crs_org, crs_new, fire_classes, outdir){
+points_overlap <- function(data_rds, crs_org, crs_new, fire_severity, fire_classes, outdir){
   
   ## Load species data (cleaned/masked ALA data)                          
   points_dat <- readRDS(data_rds)
@@ -24,7 +24,7 @@ points_overlap <- function(data_rds, crs_org, crs_new, fire_classes, outdir){
   spdf <- spTransform(spdf, CRSobj = CRS(crs_new))
   
   ## Extract fire severity values for data points
-  points_dat$FireClass <- extract(fire_severity, spdf)
+  points_dat$FireClass <- raster::extract(fire_severity, spdf)
   
   ## Create output table with number of points within each fire class
   points_dat <- as.data.table(points_dat)

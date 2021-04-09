@@ -15,8 +15,8 @@ lapply(x, require, character.only = TRUE)
 rm(x)
 
 ## File paths and folders
-bugs_data = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
-output_dir = file.path(bugs_data, "outputs")
+bugs_dir = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
+output_dir = file.path(bugs_dir, "outputs")
 spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 
 overlap_dir = file.path(output_dir, "points_overlap")
@@ -54,6 +54,7 @@ system.time(log <- foreach(species_dat = spfiles,
                              points_overlap(data_rds = species_dat, 
                                             crs_org = wgs_crs, 
                                             crs_new = eqarea_crs, 
+                                            fire_severity = fire_severity,
                                             fire_classes = fire_classes,
                                             outdir = overlap_dir)
                            })
