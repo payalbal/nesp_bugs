@@ -28,7 +28,7 @@ polygon_overlap <- function(species_name, species_poly, shapefile_dir, fire_vals
   colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), 
                     "Species_Polygon")
   df[, 1] <- species_name
-  df[, (ncol(df)-3):(ncol(df)-1)] <- sapply(fire_classes, FUN = function(x) dt[species_map == 1 & fire_severity == x, length(fire_severity) * 250 * 250 / 1000000])
+  df[, 2:(ncol(df)-1)] <- sapply(fire_classes, FUN = function(x) dt[species_map == 1 & fire_severity == x, length(fire_severity) * 250 * 250 / 1000000])
   df[, ncol(df)] <- dt[species_map == 1, length(species_map)* 250 * 250 / 1000000]
   
   ## Remove files

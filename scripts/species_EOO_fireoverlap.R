@@ -19,9 +19,12 @@ bugs_dir = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_dir, "outputs")
 
 shapefile_dir = file.path(output_dir, "species_shapefiles")
-if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
-
 overlap_dir = file.path(output_dir, "polygon_overlap")
+# ## Remove exisitng overlap and shapefiles folder
+# unlink(shapefile_dir, recursive = TRUE, force = TRUE)
+# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+# unlink(overlap_dir, recursive = TRUE)
+if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
 source("/tempdata/workdir/nesp_bugs/scripts/polygon_overlap.R")
@@ -33,14 +36,14 @@ species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
 fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
 registerDoMC(future::availableCores()-2)
-system.time(foreach(polys = polygon_list,
+system.time(foreach(polys = polygon_list[1:5],
                       .combine = rbind,
                       .errorhandling = "pass",
                       .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
@@ -93,6 +96,7 @@ system.time(foreach(polys = error_list,
                                                     outdir = overlap_dir)
                                   })
 
+unlink(shapefile_dir, recursive = TRUE, force = TRUE)
 
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
@@ -122,27 +126,26 @@ error_list[!error_list %in% csvnames]
 
 
 ## Output table ####
-## Merge csv files
+## >> Merge csv files ####
 out <- do.call("rbind", lapply(csvfiles, fread))
 names(out)[1] <- "spfile"
 setDT(out, key = "spfile")
 
-
+## Checks
+## >> Total overlapped area should be <= Species Polygon : CHECK .. total overllpaed area or sum of all 5 classes?
 message(cat("Check if area overlapping with fire is always <= Total polygon area for species: "),
-        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3)]) <= out$Species_Polygon))
+        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3, Fire_Class_4, Fire_Class_5)]) <= out$Species_Polygon))
 
-## Look for NAs in table
+## >> Look for NAs in table - shoudln't be any
 message(cat("Check for NAs: "),
         sum(is.na(out)))
-
   # which(is.na(out), arr.ind=TRUE)
   # error_list <- csvnames[!csvnames %in% out$Species]
   # error_files <- csvfiles[!csvnames %in% out$Species]
 
-## Look for Species_Polygon = 0 in table
+## >> Look for Species_Polygon = 0 in table - shouldn't be any
 message(cat("Number of species with Species_Polygon area = 0: "),
         sum(out$Species_Polygon == 0))
-
 naidx <- which(out$Species_Polygon == 0)
 out[naidx]
 
@@ -161,14 +164,18 @@ outdir = overlap_dir
 ## we get raster values with 0 and 1, but these cannot be overlaid with the fire map oif lesser extent anyway,
 ## So we will have to discard these species. 
 
-## Add percentage overlap
-out$Percent_Overlap <- ((out$Fire_Class_2 + out$Fire_Class_3)/(out$Species_Polygon - out$Fire_Class_1)) * 100
+
+## >> Add total & percentage overlap columns ####
+out$Total_Overlap <- (out$Fire_Class_3 + out$Fire_Class_4 + out$Fire_Class_5)
+out$Percent_Overlap <- (out$Total_Overlap/(out$Species_Polygon - out$Fire_Class_1)) * 100
+sum(is.na(out$Total_Overlap))
 sum(is.na(out$Percent_Overlap))
 all(which(is.na(out$Percent_Overlap)) == naidx)
 
-## Add class/family information to output table
+
+## >> Add class/family information to output table ####
 tax <- fread(file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
-tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, family, spfile)]
+tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, family, order, spfile)]
 tax <- tax[,.(scientificName, class, family, spfile)]
 tax <- tax[spfile %in% out$spfile]
 
@@ -177,31 +184,54 @@ dim(tax); length(unique(tax$spfile)); length(unique(tax$scientificName))
 
 out <- merge(out, tax, by = "spfile")
 out <- out[,c(10:8, 2:7, 1)]
-
-## Save output table
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap.csv"), row.names = FALSE)
 
 
-## Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
+## >> Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
 polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
 polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, EOO, AOO, Nbe_unique_occ., scientificName)]
 
 dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
 dim(polyareas); length(unique(polyareas$spfile)); length(unique(polyareas$scientificName))
 
-  # ## Check
-  # out2 <- merge(out, polyareas, by = "spfile")
-  # all(out2$scientificName.x == out2$scientificName.y)
+## Check
+out2 <- merge(out, polyareas, by = "spfile")
+all(out2$scientificName.x == out2$scientificName.y)
+
 polyareas[, scientificName := NULL]
 out <- merge(out, polyareas, by = "spfile")
-write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap_EOOinfo.csv"), 
+write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap.csv"), 
           row.names = FALSE)
 
-# ## Remove directories and files ####
-unlink(shapefile_dir, recursive = TRUE, force = TRUE)
-# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
-# unlink(overlap_dir, recursive = TRUE)
+
+## >> Add regional data to output table ####
+## Combine state & bushfire recovery regions tables
+region1 <- fread(file.path(output_dir, "species_by_states.csv"))
+names(region1)[-1] <- paste0("state_", names(region1)[-1])
+region2 <- fread(file.path(output_dir, "species_by_bushfireregions.csv"))
+names(region2)[-1] <- paste0("fire.rec.reg_", names(region2)[-1])
+
+dim(region1); length(unique(region1$spfile))
+dim(region2); length(unique(region2$spfile))
+
+setDT(region1, key = "spfile")
+setDT(region2, key = "spfile")
+region <- merge(region1, region2, by = "spfile")
+setDT(region, key = "spfile")
+dim(region)
+
+## Subset to species
+region <- region[spfile %in% out$spfile]
+
+dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
+dim(state); length(unique(state$spfile))
+out <- merge(out, region, by = "spfile")
+
+setDT(out, key = "spfile")
+# names(out)[14] <- "Nbe_unique_occ"
+write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap.csv"),
+          row.names = FALSE)
 
 
 ## Summarize outputs ####

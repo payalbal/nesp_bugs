@@ -154,8 +154,16 @@ gdalmask = function(infile, mask, outfile, output_Raster = FALSE, overwrite=TRUE
   #          NoDataValue = -9999, verbose=verbose)
   # '(B*A) + (B<1)*(-9999)'
   
+  
+  ## UNCOMMENT : When NoDataValue == -9999
   gdalcalc(calc= '((B==1)*A)+(-9999*(B!=1))', infile = list(A=infile, B=mask), outfile=outfile,
            NoDataValue = -9999,verbose=verbose)
+
+  
+  # ## UNCOMMENT : When NoDataValue == 0 
+  # gdalcalc(calc= '((B==1)*A)+(0*(B!=1))', infile = list(A=infile, B=mask), outfile=outfile,
+  #          NoDataValue = 0,verbose=verbose)
+  
   # system(paste0('rm ',tempfile))
   if (isTRUE(output_Raster)) {
     outraster <- raster::raster(outfile)

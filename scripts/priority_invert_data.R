@@ -1,20 +1,19 @@
 ## Priority listed invertebrate species
 
 
-## Set working environment
-x <- c("readxl", "data.table", "ALA4R", "sp", "raster", "future", "future.apply")    
+## Set working environment ####
+rm(list = ls())
+gc()
+# system("ps")
+# system("pkill -f R")
+x <- c("readxl", "data.table", "ALA4R", "stringr")    
 lapply(x, require, character.only = TRUE)
 rm(x)
 
 
-# ## Local paths
-# data_path <- "/Volumes/6300-payalb/uom_data/nesp_bugs_data"
-# output_path <- "/Volumes/6300-payalb/uom_data/nesp_bugs_data/outputs/"
-
-
-## Server paths 
-bugs_data <- "/tempdata/research-cifs/uom_data/nesp_bugs_data"
-output_dir = file.path(bugs_data, "outputs")
+## Folder paths 
+bugs_dir <- "/tempdata/research-cifs/uom_data/nesp_bugs_data"
+output_dir = file.path(bugs_dir, "outputs")
 spdata_dir = file.path(output_dir, "ala_data" ,"spdata/spdata")
 priority_dir <- file.path(output_dir, "ala_data", "priority_inverts")
 if(!dir.exists(priority_dir)) dir.create(priority_dir)
@@ -24,46 +23,71 @@ source(file.path(getwd(), "nesp_bugs/scripts", "remove_improper_names.R"))
 
 
 ## Get priority species list (provided by Darren S)
-priority_sp <- file.path(bugs_data, "all_priority_invertebrates_June2020_DS.xlsx")
+priority_sp <- file.path(bugs_dir, "all_priority_invertebrates_June2020_DS.xlsx")
 priority_sp <- as.data.table(read_excel(priority_sp, sheet = "Combined"))
 priority_sp <- priority_sp[Inclusions == 1,]$`Species name`
 
+message(cat("Number of priority species:"), length(priority_sp))
+
 
 ## Priority species in online ALA database
-db_counts <- fread(file.path(output_dir, "typecounts.csv"))
+alaDB_counts <- fread(file.path(output_dir, "typecounts.csv"))
 
 message(cat("Number of priority species WITHOUT valid records in online ALA database:"),
-        length(priority_sp[!priority_sp %in% db_counts$species]))
+        length(priority_sp[!priority_sp %in% alaDB_counts$species]))
 message(cat("Priority species WITHOUT valid records in online ALA database:",
-            sort(priority_sp[!priority_sp %in% db_counts$species]), sep = "\n"))
-x <- sort(priority_sp[!priority_sp %in% db_counts$species])
-write.csv(x, file.path(output_dir, "prioritysp_NOTIN_ALAdb.csv"), row.names = FALSE)
+            sort(priority_sp[!priority_sp %in% alaDB_counts$species]), sep = "\n"))
+  # x <- sort(priority_sp[!priority_sp %in% alaDB_counts$species])
+  # write.csv(x, file.path(output_dir, "prioritysp_NOTIN_ALAdb.csv"), row.names = FALSE)
 
-db_counts <- db_counts[species %in% priority_sp, ]
-db_counts <- db_counts[order(specimen)]
+alaDB_counts <- alaDB_counts[species %in% priority_sp, ]
+alaDB_counts <- alaDB_counts[order(specimen)]
 message(cat("Number of priority species WITH valid records in online ALA database:"),
-        dim(db_counts)[1])
+        dim(alaDB_counts)[1])
 message(cat("Priority species WITHOUT valid records in online ALA database:",
-            sort(db_counts$species), sep = "\n"))
-write.csv(db_counts, file.path(output_dir, "prioritysp_IN_ALAdb.csv"), row.names = FALSE)
+            sort(alaDB_counts$species), sep = "\n"))
+  # write.csv(alaDB_counts, file.path(output_dir, "prioritysp_IN_ALAdb.csv"), row.names = FALSE)
 
 
 ## Priority species in downloaded/cleaned ALA data
-data_counts <- fread(file.path(output_dir, "datacounts_ALAspecies.csv"))
+alaDAT_counts <- fread(file.path(output_dir, "datacounts_ALAspecies.csv"))
 
 message(cat("Number of priority species NOT found in downloaded/cleaned ALA data:"),
-        length(priority_sp[!priority_sp %in% data_counts$scientificName]))
+        length(priority_sp[!priority_sp %in% alaDAT_counts$scientificName]))
 message(cat("Priority species NOT found in downloaded/cleaned ALA data:",
-            sort(priority_sp[!priority_sp %in% data_counts$scientificName]), sep = "\n"))
-x <- sort(priority_sp[!priority_sp %in% data_counts$scientificName])
-write.csv(x, file.path(output_dir, "prioritysp_NOTIN_ALAcleandata.csv"), row.names = FALSE)
+            sort(priority_sp[!priority_sp %in% alaDAT_counts$scientificName]), sep = "\n"))
+  # x <- sort(priority_sp[!priority_sp %in% alaDAT_counts$scientificName])
+  # write.csv(x, file.path(output_dir, "prioritysp_NOTIN_ALAcleandata.csv"), row.names = FALSE)
 
-data_counts <- data_counts[scientificName %in% priority_sp, ]
+alaDAT_counts <- alaDAT_counts[scientificName %in% priority_sp, ]
 message(cat("Number of priority species found in downloaded/cleaned ALA data:"),
-        dim(data_counts)[1])
+        dim(alaDAT_counts)[1])
 message(cat("Priority species found in downloaded/cleaned ALA data:",
-            sort(data_counts$scientificName), sep = "\n"))
-write.csv(data_counts, file.path(output_dir, "prioritysp_IN_ALAcleandata.csv"), row.names = FALSE)
+            sort(alaDAT_counts$scientificName), sep = "\n"))
+  # write.csv(alaDAT_counts, file.path(output_dir, "prioritysp_IN_ALAcleandata.csv"), row.names = FALSE)
+
+## Priority species in downloaded/cleaned ALA + nonALA data
+data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
+alldat_counts <- data[, .N, by = spfile]
+
+priority_spfile <- stringr::str_replace_all(priority_sp, " ", "00xx00")
+priority_spfile <- stringr::str_replace_all(priority_spfile, "[^[:alnum:]]", "")
+priority_spfile <- tolower(gsub("00xx00", "_", priority_spfile))
+y <- alldat_counts$spfile
+y <- gsub("_\\d+$", "", y) ## Remove number at the end of string
+##  gsub("^\\d+|\\d+$", "", words)    ## number at beginning at end of string
+
+message(cat("Number of priority species NOT found in downloaded/cleaned ALA+nonALA data:"),
+        length(priority_spfile[!priority_spfile %in% y]))
+priority_spfile[!priority_spfile %in% y]
+
+message(cat("Number of priority species found in downloaded/cleaned ALA+nonALA data:"),
+        length(priority_spfile[priority_spfile %in% y]))
+
+message(cat("Of the species found, number of species with >= 20 records:"),
+        sum(alldat_counts[y %in% priority_spfile]$N >= 20))
+message(cat("Of the species found, number of species with < 20 records:"),
+        sum(alldat_counts[y %in% priority_spfile]$N < 20))
 
 
 

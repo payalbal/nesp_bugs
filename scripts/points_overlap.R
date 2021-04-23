@@ -34,7 +34,7 @@ points_overlap <- function(data_rds, crs_org, crs_new, fire_severity, fire_class
   colnames(df) <- c("Species", paste0("Fire_Class_", fire_classes), 
                     "Occurrence_Points")
   df[ , 1] <- spname
-  df[, (ncol(df)-3):(ncol(df)-1)] <- sapply(fire_classes, FUN = function(x) points_dat[FireClass == x, length(FireClass)])
+  df[, 2:(ncol(df)-1)] <- sapply(fire_classes, FUN = function(x) points_dat[FireClass == x, length(FireClass)])
   df[ , ncol(df)] <- nrow(points_dat)
 
   ## Save output as csv

@@ -20,6 +20,9 @@ output_dir = file.path(bugs_dir, "outputs")
 spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 
 overlap_dir = file.path(output_dir, "points_overlap")
+## Remove existing overlap folder
+# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+# unlink(overlap_dir, recursive = TRUE)
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
 source("/tempdata/workdir/nesp_bugs/scripts/points_overlap.R")
@@ -37,7 +40,7 @@ x <- basename(tools::file_path_sans_ext(spfiles))
 spfiles <- spfiles[x %in% points_list]
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
 fire_classes <- sort(unique(na.omit(fire_severity[])))
 
 ## Function parameters
@@ -73,31 +76,35 @@ message(cat("Number of output files: "),
 
 
 ## Output table ####
-## Merge csv files
+## >> Merge csv files ####
 out <- do.call("rbind", lapply(csvfiles, fread))
 names(out)[1] <- "spfile"
 setDT(out, key = "spfile")
 
+## Checks
+## >> Total overlapped points should be <= Total Occurrence points
 message(cat("Check if #points overlapping with fire is always <= Total # points for species: "),
-        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3)]) <= out$Occurrence_Points))
+        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3, Fire_Class_4, Fire_Class_5)], na.rm = TRUE) <= out$Occurrence_Points))
 
-## Look for NAs in table
+## >> Look for NAs in table - shouldn't be any
 message(cat("Check for NAs: "),
         sum(is.na(out)))
 
-## Look for Species_Polygon = 0 in table
+## >> Look for Occurrence_Points = 0 in table - shoudln't be any
 message(cat("Number of species with Occurrence_Points = 0: "),
         sum(out$Occurrence_Points == 0))
 
 
-## Add percentage overlap
-out$Percent_Overlap <- ((out$Fire_Class_2 + out$Fire_Class_3)/(out$Occurrence_Points - out$Fire_Class_1)) * 100
+## >> Add total & percentage overlap columns ####
+out$Total_Overlap <- (out$Fire_Class_3 + out$Fire_Class_4 + out$Fire_Class_5)
+out$Percent_Overlap <- (out$Total_Overlap/(out$Occurrence_Points - out$Fire_Class_1)) * 100
+sum(is.na(out$Total_Overlap))
 sum(is.na(out$Percent_Overlap))
 naidx <- which(is.na(out$Percent_Overlap))
 out[naidx]
 
 
-## Add class/family information to output table
+## >> Add class/family information to output table ####
 tax <- fread(file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
 tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, family, spfile)]
 tax <- tax[,.(scientificName, class, family, spfile)]
@@ -107,20 +114,48 @@ dim(out); length(unique(out$spfile))
 dim(tax); length(unique(tax$spfile)); length(unique(tax$scientificName))
 
 out <- merge(out, tax, by = "spfile")
-
-## Save output table
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"), row.names = FALSE)
 
 
-## Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
+## >> Add order information to output table ####
+afd <- fread(file.path(output_dir, "afd_species_clean.csv"))
+setDT(afd, key = "VALID_NAME")
+
+afd_info <- data.table()
+for (sp in out$scientificName){
+  if (length(unique(afd[which(afd$VALID_NAME %in% sp)]$VALID_NAME)) > 1){
+    warning(paste0("More than 1 unique taxon info found for ", sp))
+    
+  } else {
+    if (length(unique(afd[which(afd$VALID_NAME %in% sp)]$VALID_NAME)) == 0) {
+      warning(paste0("No taxon info found for ", sp))
+    } else {
+      x <- unique((afd[.(sp)]))
+      afd_info <- rbind(afd_info, cbind(scientificName = sp, x))
+    }
+  }
+}
+warnings()
+sum(duplicated(afd_info))
+sum(duplicated(afd_info$scientificName))
+afd_info <- afd_info[!duplicated(afd_info[,.(scientificName)])]
+afd_info <- setDT(afd_info, key = "scientificName")
+
+out$order <- rep(character(), nrow(out))
+for (sp in afd_info$scientificName){
+  out[scientificName == sp]$order = afd_info[scientificName == sp]$ORDER 
+}
+
+
+## >> Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
 polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
 polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, AOO, Nbe_unique_occ., scientificName)]
 
 dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
 dim(polyareas); length(unique(polyareas$spfile)); length(unique(polyareas$scientificName))
 
-# ## Check
+## Check
 out2 <- merge(out, polyareas, by = "spfile")
 all(out2$scientificName.x == out2$scientificName.y)
 which(!(out2$scientificName.x == out2$scientificName.y))
@@ -129,13 +164,36 @@ out2[which(!(out2$scientificName.x == out2$scientificName.y))]
 
 polyareas[, scientificName := NULL]
 out <- merge(out, polyareas, by = "spfile")
-write.csv(out, file = file.path(output_dir, "species_points_fireoverlap_AOOinfo.csv"), 
+write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"),
           row.names = FALSE)
 
+## >> Add regional data to output table ####
+## Combine state & bushfire recovery regions tables
+region1 <- fread(file.path(output_dir, "species_by_states.csv"))
+names(region1)[-1] <- paste0("state_", names(region1)[-1])
+region2 <- fread(file.path(output_dir, "species_by_bushfireregions.csv"))
+names(region2)[-1] <- paste0("fire.rec.reg_", names(region2)[-1])
 
-## Remove files ####
-# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
-# unlink(overlap_dir, recursive = TRUE)
+dim(region1); length(unique(region1$spfile))
+dim(region2); length(unique(region2$spfile))
+
+setDT(region1, key = "spfile")
+setDT(region2, key = "spfile")
+region <- merge(region1, region2, by = "spfile")
+setDT(region, key = "spfile")
+dim(region)
+
+## Subset to species
+region <- region[spfile %in% out$spfile]
+
+dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
+dim(state); length(unique(state$spfile))
+out <- merge(out, region, by = "spfile")
+
+setDT(out, key = "spfile")
+names(out)[14] <- "Nbe_unique_occ"
+write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"),
+          row.names = FALSE)
 
 
 ## Summarize outputs ####
@@ -150,12 +208,14 @@ message(cat("Number of species showing overlap: "))
 out[, .N, by = Occurrence_Points]
 
 ## Unique class-family summaries in 100% overlap
-out[Percent_Overlap == 100][, .SD[1L] ,.(class, family)][,.(class,family)]
+message(cat("Unique classes shwowing 100% overlap:"))
 out[Percent_Overlap == 100][, .SD[1L] ,.(class)][,.(class)][, .N, class]$class
+
 out[Percent_Overlap == 100][, .SD[1L] ,.(family)][,.(family)][, .N, family]
+out[Percent_Overlap == 100][, .SD[1L] ,.(class, family)][,.(class,family)]
 
 ## High severity overlaps
-fire3_overlap <- out$Fire_Class_3/out$Occurrence_Points
+fire3_overlap <- (out$Fire_Class_4 + out$Fire_Class_5)/out$Occurrence_Points
 message(cat("Number of species with high fire severity impact on all (n = 2) recorded data points: "),
         length(which(fire3_overlap == 1)))
 

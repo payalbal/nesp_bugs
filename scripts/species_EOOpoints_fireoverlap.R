@@ -15,11 +15,14 @@ lapply(x, require, character.only = TRUE)
 rm(x)
 
 ## File paths and folders
-bugs_data = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
-output_dir = file.path(bugs_data, "outputs")
+bugs_dir = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
+output_dir = file.path(bugs_dir, "outputs")
 spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 
 overlap_dir = file.path(output_dir, "polygon_points_overlap")
+## Remove existing overlap folder
+# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
+# unlink(overlap_dir, recursive = TRUE)
 if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 
 source("/tempdata/workdir/nesp_bugs/scripts/points_overlap.R")
@@ -37,7 +40,7 @@ x <- basename(tools::file_path_sans_ext(spfiles))
 spfiles <- spfiles[x %in% points_list]
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
 fire_classes <- sort(unique(na.omit(fire_severity[])))
 
 ## Function parameters
@@ -135,7 +138,3 @@ out <- out[ , c(1,7,8,9,2:6,12:16,10,11)]
 write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap_allinfo.csv"),
           row.names = FALSE)
 
-
-## Remove files ####
-# file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
-# unlink(overlap_dir, recursive = TRUE)

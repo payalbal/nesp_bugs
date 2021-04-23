@@ -17,6 +17,8 @@ bugs_data = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_data, "outputs")
 shapefile_dir = file.path(output_dir, "species_shapefiles")
 overlap_dir = file.path(output_dir, "polygon_overlap")
+if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
+if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/polygon_overlap.R")
 
 
@@ -27,26 +29,26 @@ species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
 fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
 
-  # ## >> Run overlap analysis in parallel: doMC ####
-  # ## 'log' only useful when running small number of species
-  # registerDoMC(76)
-  # system.time(foreach(polys = polygon_list,
-  #                     .combine = rbind,
-  #                     .errorhandling = "pass",
-  #                     .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
-  # 
-  #                       polygon_overlap(species_name = polys, # polys = polygon_list[335]
-  #                                       species_poly = species_maps[[polys]],
-  #                                       shapefile_dir = shapefile_dir,
-  #                                       fire_vals = fire_vals,
-  #                                       fire_classes = fire_classes,
-  #                                       outdir = overlap_dir)
-  #                     })
+# ## >> Run overlap analysis in parallel: doMC ####
+# ## 'log' only useful when running small number of species
+# registerDoMC(76)
+# system.time(foreach(polys = polygon_list,
+#                     .combine = rbind,
+#                     .errorhandling = "pass",
+#                     .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
+# 
+#                       polygon_overlap(species_name = polys, # polys = polygon_list[335]
+#                                       species_poly = species_maps[[polys]],
+#                                       shapefile_dir = shapefile_dir,
+#                                       fire_vals = fire_vals,
+#                                       fire_classes = fire_classes,
+#                                       outdir = overlap_dir)
+#                     })
 
 
 ## Error runs.... ####
@@ -61,7 +63,7 @@ error_list <- polygon_list[!polygon_list %in% csvnames]
 ## Reruns ####
 ## Repeat this till most of the errors are fixed
 ## Errors seem to be an artefact of the system rather than problem with data/code
-registerDoMC(future::availableCores()-2)
+registerDoMC(76)
 system.time(foreach(polys = error_list,
                     .combine = rbind,
                     .errorhandling = "pass",
