@@ -146,7 +146,7 @@ out$order <- rep(character(), nrow(out))
 for (sp in afd_info$scientificName){
   out[scientificName == sp]$order = afd_info[scientificName == sp]$ORDER 
 }
-
+out$order <- tolower(out$order)
 
 ## >> Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
 polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
@@ -187,11 +187,11 @@ dim(region)
 region <- region[spfile %in% out$spfile]
 
 dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
-dim(state); length(unique(state$spfile))
+dim(region); length(unique(region$spfile))
 out <- merge(out, region, by = "spfile")
 
 setDT(out, key = "spfile")
-names(out)[14] <- "Nbe_unique_occ"
+names(out)[which(names(out) == "Nbe_unique_occ.")] <- "Nbe_unique_occ"
 write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"),
           row.names = FALSE)
 

@@ -188,6 +188,37 @@ setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_polygon_fireoverlap.csv"), row.names = FALSE)
 
 
+## >> Add order information to output table ####
+afd <- fread(file.path(output_dir, "afd_species_clean.csv"))
+setDT(afd, key = "VALID_NAME")
+
+afd_info <- data.table()
+for (sp in out$scientificName){
+  if (length(unique(afd[which(afd$VALID_NAME %in% sp)]$VALID_NAME)) > 1){
+    warning(paste0("More than 1 unique taxon info found for ", sp))
+    
+  } else {
+    if (length(unique(afd[which(afd$VALID_NAME %in% sp)]$VALID_NAME)) == 0) {
+      warning(paste0("No taxon info found for ", sp))
+    } else {
+      x <- unique((afd[.(sp)]))
+      afd_info <- rbind(afd_info, cbind(scientificName = sp, x))
+    }
+  }
+}
+warnings()
+sum(duplicated(afd_info))
+sum(duplicated(afd_info$scientificName))
+afd_info <- afd_info[!duplicated(afd_info[,.(scientificName)])]
+afd_info <- setDT(afd_info, key = "scientificName")
+
+out$order <- rep(character(), nrow(out))
+for (sp in afd_info$scientificName){
+  out[scientificName == sp]$order = afd_info[scientificName == sp]$ORDER 
+}
+out$order <- tolower(out$order)
+
+
 ## >> Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
 polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
 polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, EOO, AOO, Nbe_unique_occ., scientificName)]
