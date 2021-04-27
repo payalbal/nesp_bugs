@@ -132,7 +132,7 @@ for (sp in temp$spfile){
 }
 
 length(temp$spfile)
-sum(out$delete_sp == 1, na.rm = TRUE)
+sum(out$spell_variants == 1, na.rm = TRUE)
 
 
 ## >> Column for corrected name text [to be populated by JW & JM] ####
@@ -140,9 +140,7 @@ out$name_corrections <- rep(character(), nrow(out))
 
 
 ## Save table ####
-names(out)[c(1:46, 50, 47, 49, 48)]
-out <- out[, c(1:46, 50, 47, 49, 48)]
-
+names(out)
 setDT(out, key = "spfile", "scientificName")
 write.csv(out, file = file.path(output_dir, "invert_fireoverlap.csv"), 
           row.names = FALSE)
