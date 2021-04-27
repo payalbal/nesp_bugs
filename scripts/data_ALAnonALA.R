@@ -462,6 +462,7 @@ for (sp in sensitive_sp){
 
 ## Remove non natives ####
 ## _____________________________________________________________
+## see data_corrections/exotics_alanonala.csv 
 exotics <- fread(file.path(bugs_dir, "ALA", 
                            "GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv"))
 

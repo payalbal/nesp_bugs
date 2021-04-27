@@ -60,6 +60,10 @@ csvfiles <- list.files(overlap_dir, pattern = ".csv$",
 csvnames <- tools::file_path_sans_ext(basename(csvfiles))
 error_list <- polygon_list[!polygon_list %in% csvnames]
 
+# ## Species_off extent
+# error_list <- fread(file.path(output_dir, "species_offextent.csv"))
+# error_list <- error_list$x
+
 ## Reruns ####
 ## Repeat this till most of the errors are fixed
 ## Errors seem to be an artefact of the system rather than problem with data/code
