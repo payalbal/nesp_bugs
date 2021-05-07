@@ -46,7 +46,7 @@ fire_classes <- sort(unique(na.omit(fire_vals)))
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
 registerDoMC(future::availableCores()-2)
-system.time(foreach(polys = polygon_list[1:5],
+system.time(foreach(polys = polygon_list,
                       .combine = rbind,
                       .errorhandling = "pass",
                       .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
