@@ -14,13 +14,14 @@ rm(x)
 
 ## Server paths
 source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_taxondata.R"))
-output_dir = file.path(getwd(), "nesp_bugs", "outputs")
+bugs_dir = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
+output_dir = file.path(bugs_dir, "outputs")
 
 # ## Local paths
 # source(file.path(getwd(), "scripts/get_ala_taxondata.R"))
 # output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
 
-ala_dir <- file.path(output_dir, "ala_data")
+ala_dir <- file.path(bugs_dir, "ALA", "download_bytaxon")
 if(!dir.exists(ala_dir)) dir.create(ala_dir)
 
 '%!in%' <- function(x,y)!('%in%'(x,y))

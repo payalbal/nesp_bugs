@@ -299,6 +299,7 @@ message(cat("Number of unique species in data: "),
 
 
 ## Complete taxonomic information (if possible) ####
+## >> >> >> Add order << << << ####
 ## ___________________________________________________
 
 ## >> List records with incomplete class/family columns ####
@@ -477,6 +478,26 @@ exotics <- exotics[!duplicated(exotics)]
 
 dim(dat[(scientificName %in% exotics)])
 dat <- dat[!(scientificName %in% exotics)]
+
+
+## Remove marine species ####
+## >> >> >> NOT APPLIED YET << << << ####
+## _____________________________________________________________
+## restrospective step: corrections were done on output table of overlap analysis
+temp <- fread(file.path(corr_dir, "invert_fireoverlap_JRM_marine.csv"))
+temp <- temp[marine == 1]
+
+## Check if any of these species are listed as name variants
+unique(temp$name_issues)
+unique(temp$name_corrections)
+unique(temp$spell_variants)
+
+## Check if spfile identified as marine are associated to unique scientific names
+sum(duplicated(temp$spfile))
+sum(duplicated(temp$scientificName))
+
+## Remove species from data
+dat <- dat[!(scientificName %in% temp$scientificName)]
 
 
 
