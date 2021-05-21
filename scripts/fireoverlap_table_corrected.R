@@ -47,4 +47,34 @@ length(unique(dat$scientificName))
 setDT(dat, key = "spfile", "scientificName")
 write.csv(dat, file = file.path(output_dir, "invert_fireoverlap_v02.csv"), 
           row.names = FALSE)
+
+
 summary(dat)
+
+message(cat("Total number of invertebrate species: "),
+        nrow(dat))
+
+message(cat("Number of species with < 3 unique records: "),
+        sum(dat$Occurrence_Points < 3))
+message(cat("Number of species without polygons: "),
+        sum(is.na(dat$Species_Polygon)))
+
+message(cat("Number of species with >= 3 unique records: "),
+        sum(dat$Occurrence_Points >= 3))
+message(cat("Number of species with polygons: "),
+        sum(!is.na(dat$Species_Polygon)))
+
+## Checks
+nrow(dat[Occurrence_Points < 3][!is.na(Species_Polygon)])
+nrow(dat[Occurrence_Points >= 3][is.na(Species_Polygon)])
+
+## Species with 3 or more data points but without a polygon
+x <- dat[Occurrence_Points >= 3][is.na(Species_Polygon)]$spfile
+offext <- fread(file.path(output_dir, "species_offextent.csv"))$x
+x[which(!x %in% offext)]
+## 303 species with >=3 unique records but without polygons. 
+
+## All but 6 of these spcies are included in the species_offextent.csv indicating these fall off the extent of the fire map, i.e.m on islands not included in the fire map. 
+
+## The 6 remaining species are the same species as those identified previously showing errors, i.e., for which polygons could not be created.
+
