@@ -480,26 +480,6 @@ dim(dat[(scientificName %in% exotics)])
 dat <- dat[!(scientificName %in% exotics)]
 
 
-## Remove marine species ####
-## >> >> >> NOT APPLIED YET << << << ####
-## _____________________________________________________________
-## restrospective step: corrections were done on output table of overlap analysis
-temp <- fread(file.path(corr_dir, "invert_fireoverlap_JRM_marine.csv"))
-temp <- temp[marine == 1]
-
-## Check if any of these species are listed as name variants
-unique(temp$name_issues)
-unique(temp$name_corrections)
-unique(temp$spell_variants)
-
-## Check if spfile identified as marine are associated to unique scientific names
-sum(duplicated(temp$spfile))
-sum(duplicated(temp$scientificName))
-
-## Remove species from data
-dat <- dat[!(scientificName %in% temp$scientificName)]
-
-
 
 ## Final data checks ####
 ## _____________________________________________________________
@@ -556,7 +536,8 @@ dat[,new_id := NULL]
 ## This dataset contains all nonALA data and a subset of the ALA data 
 ## i.e., subset of species in ALA found in nonALA data.
 setorder(dat, scientificName)
-write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"), row.names = FALSE)
+write.csv(dat, file = file.path(output_dir, "data_ALAnonALA_wgs84.csv"), 
+          row.names = FALSE)
 
 ## Summarise
 print(setorder(dat[, .N, data_source], -N))
@@ -568,6 +549,11 @@ message(cat("proportion of data from non-ALA sources: "),
 
 x <- setorder(dat[, .N, data_source], -N)
 sum(x[grep("WA", x$data_source),]$N)
+
+
+## >>>>>> DATA CORRECTION STEPS TO BE ADDED HERE <<<<<<< ####
+
+
 
 
 ## Save rds files by species ####

@@ -34,50 +34,50 @@ fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
 
-# ## >> Run overlap analysis in parallel: doMC ####
-# ## 'log' only useful when running small number of species
-# registerDoMC(76)
-# system.time(foreach(polys = polygon_list,
-#                     .combine = rbind,
-#                     .errorhandling = "pass",
-#                     .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
-# 
-#                       polygon_overlap(species_name = polys, # polys = polygon_list[335]
-#                                       species_poly = species_maps[[polys]],
-#                                       shapefile_dir = shapefile_dir,
-#                                       fire_vals = fire_vals,
-#                                       fire_classes = fire_classes,
-#                                       outdir = overlap_dir)
-#                     })
-
-
-## Error runs.... ####
-## >> Display results summary ####
-csvfiles <- list.files(overlap_dir, pattern = ".csv$",
-                       full.names = TRUE, all.files = TRUE)
-
-## >> Find missing species from outputs ####
-csvnames <- tools::file_path_sans_ext(basename(csvfiles))
-error_list <- polygon_list[!polygon_list %in% csvnames]
-
-# ## Species_off extent
-# error_list <- fread(file.path(output_dir, "species_offextent.csv"))
-# error_list <- error_list$x
-
-## Reruns ####
-## Repeat this till most of the errors are fixed
-## Errors seem to be an artefact of the system rather than problem with data/code
+## >> Run overlap analysis in parallel: doMC ####
+## 'log' only useful when running small number of species
 registerDoMC(76)
-system.time(foreach(polys = error_list,
+system.time(foreach(polys = polygon_list,
                     .combine = rbind,
                     .errorhandling = "pass",
-                    .packages = c('sp', 'raster',
-                                  'rgdal', 'data.table')) %dopar%{
+                    .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
 
-                                    polygon_overlap(species_name = polys,
-                                                    species_poly = species_maps[[polys]],
-                                                    shapefile_dir = shapefile_dir,
-                                                    fire_vals = fire_vals,
-                                                    fire_classes = fire_classes,
-                                                    outdir = overlap_dir)
-                                  })
+                      polygon_overlap(species_name = polys, # polys = polygon_list[335]
+                                      species_poly = species_maps[[polys]],
+                                      shapefile_dir = shapefile_dir,
+                                      fire_vals = fire_vals,
+                                      fire_classes = fire_classes,
+                                      outdir = overlap_dir)
+                    })
+
+
+# ## Error runs.... ####
+# ## >> Display results summary ####
+# csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+#                        full.names = TRUE, all.files = TRUE)
+# 
+# ## >> Find missing species from outputs ####
+# csvnames <- tools::file_path_sans_ext(basename(csvfiles))
+# error_list <- polygon_list[!polygon_list %in% csvnames]
+# 
+# # ## Species_off extent
+# # error_list <- fread(file.path(output_dir, "species_offextent.csv"))
+# # error_list <- error_list$x
+# 
+# ## Reruns ####
+# ## Repeat this till most of the errors are fixed
+# ## Errors seem to be an artefact of the system rather than problem with data/code
+# registerDoMC(76)
+# system.time(foreach(polys = error_list,
+#                     .combine = rbind,
+#                     .errorhandling = "pass",
+#                     .packages = c('sp', 'raster',
+#                                   'rgdal', 'data.table')) %dopar%{
+# 
+#                                     polygon_overlap(species_name = polys,
+#                                                     species_poly = species_maps[[polys]],
+#                                                     shapefile_dir = shapefile_dir,
+#                                                     fire_vals = fire_vals,
+#                                                     fire_classes = fire_classes,
+#                                                     outdir = overlap_dir)
+#                                   })

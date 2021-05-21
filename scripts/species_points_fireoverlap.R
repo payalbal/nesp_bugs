@@ -171,7 +171,7 @@ afd_info <- afd_info[!duplicated(afd_info[,.(scientificName, CLASS, ORDER, FAMIL
 afd_info <- setDT(afd_info, key = "scientificName")
 write.csv(afd_info, file = file.path(output_dir, "data_ALAnonALA_taxinfo.csv"))
 
-## Merge information with outut table
+## Merge information with output table
 out$order <- rep(character(), nrow(out))
 for (sp in afd_info$scientificName){
   out[scientificName == sp]$order = afd_info[scientificName == sp]$ORDER 
@@ -217,7 +217,7 @@ region <- merge(region1, region2, by = "spfile")
 setDT(region, key = "spfile")
 dim(region)
 
-## Merge information with outut table
+## Merge information with output table
 region <- region[spfile %in% out$spfile]
 dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
 dim(region); length(unique(region$spfile))
