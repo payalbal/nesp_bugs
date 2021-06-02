@@ -142,6 +142,6 @@ out$name_corrections <- rep(character(), nrow(out))
 ## Save table ####
 names(out)
 setDT(out, key = "spfile", "scientificName")
-write.csv(out, file = file.path(output_dir, "invert_fireoverlap.csv"), 
+write.csv(out, file = file.path(output_dir, "invert_fireoverlap_v01.csv"), 
           row.names = FALSE)
 summary(out)

@@ -17,9 +17,7 @@ rm(x)
 ## File paths and folders
 bugs_dir = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
 iucn_dir = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/iucn_bugs_data"
-corr_dir = file.path(bugs_dir, "data_corrections")
 output_dir = file.path(bugs_dir, "outputs")
-iucn_output_dir = file.path(iucn_dir, "outputs")
 
 new_output_dir = file.path(bugs_dir, "outputs", "outputs_for_expert_data_only")
 if (!dir.exists(new_output_dir)) {dir.create(new_output_dir)}
@@ -32,122 +30,29 @@ if (!dir.exists(polygons_dir)) {dir.create(polygons_dir)}
 working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
 
 # ## >> Remove files ####
-# file.remove(file.path(spdata_dir, dir(path = spdata_dir)))
-# unlink(spdata_dir, recursive = TRUE)
+# file.remove(file.path(new_output_dir, dir(path = new_output_dir)))
+# unlink(new_output_dir, recursive = TRUE)
 
 
-## >> Find data for IUCN species ####
-## ------------------------------------------------------------- ##
-
-## IUCN species list (see updates in IUCN_specieslist.xlsx in Dropbox)
-iucn_species <- fread(file.path(iucn_dir, "IUCN_specieslist.csv"))
-message(cat("Total number of species in updated IUCN list: "),
-        nrow(iucn_species))
-
-## Add ScientificName column to IUCN list
-iucn_species$ScientificName <- gsub("  ", " ", tolower(paste(iucn_species$Genus, 
-                                                             iucn_species$SubGenus,
-                                                             iucn_species$Species)))
-
-## Find and remove incomplete and improper names
-source("/tempdata/workdir/nesp_bugs/scripts/remove_improper_names.R")
-species_record <- remove_improper_names(as.character(iucn_species$ScientificName),
-                                        allow.higher.taxa = FALSE,
-                                        allow.subspecies = TRUE)
-message(cat("# Improper species names found in ALA data: "),
-        length(species_record$improper_species))
-message(cat("# Incomplete species names found in ALA data: "),
-        length(species_record$incomplete_species))
-message(cat("Duplicates in cleaned ALA species list: "),
-        length(species_record$updated_list[duplicated(species_record$updated_list)]))
-# species_record$updated_list[!duplicated(species_record$updated_list)]
-
-## Subset list if improper or incomplete names found
-if(!length(species_record$updated_list) == length(iucn_species$ScientificName)){
-  iucn_species <- iucn_species[ScientificName == species_record$updated_list]
-}
-rm(species_record, remove_improper_names)
-
-## Add spfile coumn to IUCN species list
-iucn_species$spfile <- str_replace_all(iucn_species$ScientificName, " ", "00xx00")
-iucn_species$spfile <- str_replace_all(iucn_species$spfile, "[^[:alnum:]]", "")
-iucn_species$spfile <- tolower(gsub("00xx00", "_", iucn_species$spfile))
-length(unique(iucn_species$ScientificName))
-length(unique(iucn_species$spfile))
-
-## Load ALAnoALA data
+## Prepare data #### 
+## >> Load ALAnonALA data ####
 data_all <- data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"))
 data$spfile2 <- gsub("_\\d+$", "", data$spfile)
-data_spfile2 <- unique(data$spfile2)
 
-## Look for Psacadonotus insulanus: not found
-grep("Psacadonotus insulanus", data$scientificName)
-grep("psacadonotus_insulanus", data$spfile2)
-
-## Extract ALAnoALA data for IUCN species
-data <- data[spfile2 %in% iucn_species$spfile]; dim(data)
-
-## List IUCN species names and matches with ALA data
-## partial macthes are listed in both %in% and !..%in%
-## e.g. austroaeschna_flavomaculata
-message(cat("Number of species in IUCN list: "),
-        length(iucn_species$spfile))
-message(cat("Number of IUCN species found in cleaned/masked ALA data files: "),
-        length(iucn_species$spfile[iucn_species$spfile %in% data$spfile2]))
-message(cat("Number of IUCN species not found in cleaned/masked ALA data files: "),
-        length(iucn_species$spfile[!iucn_species$spfile %in% data$spfile2]))
-message(cat("IUCN species not found in cleaned/masked ALA data files: "))
-iucn_species$spfile[!iucn_species$spfile %in% data$spfile2]
-
-## Find unmacthed IUCN species(inlcudes partial matches)
-y <- iucn_species$spfile[!iucn_species$spfile %in% data_spfile2]
-data_spfile2[grep(paste(y,collapse="|"), data_spfile2)]
-
-## Rematching names for species not found in ALAnonALA data
-## Remove text in the middle of two _
-y <- gsub("_\\s*(.*?)\\s*_", "_", y) 
-grep(paste(y,collapse="|"), data_spfile2, value = TRUE)
-
-## Remove third word & find species in ALAnonALA data
-y <- iucn_species$spfile[!iucn_species$spfile %in% data_spfile2]
-y <- gsub("_", " ", y)
-grep(paste(gsub(" ", "_", word(y, 1, 2)),collapse="|"), data_spfile2, 
-     value = TRUE)
-rm(y, data_spfile2)
-
-## Remove (some) species with incorrect data from ALA nonALA data based on expert input
-remove_data <- c("nunciella_kangarooensis", 
-                 "ogyris_halmaturia", 
-                 "kosciuscola_cognatus", 
-                 "kosciuscola_cuneatus", 
-                 "kosciuscola_tristis", 
-                 "kosciuscola_usitatus")
-dim(data[data$spfile2 %in% remove_data])
-dim(data); data <- data[!data$spfile2 %in% remove_data]; dim(data)
-rm(remove_data)
-
-## Rename columns
-data <- data[ , .(scientificName, latitude, longitude, class, order, family, year, data_source, spfile)]
-length(unique(data$spfile))
-str(data)
-
-## Add expert elicited data for (some) species
+## >> Add expert elicited data for (some) species ####
 data_expert <- fread(file.path(iucn_dir, "nonALA_data", "data_expert.csv"))
 data_expert2 <- fread(file.path(iucn_dir, "nonALA_data", "Extra_species_data_28May2021.csv"))
 all(names(data_expert) == names(data_expert2))
-  # ## Find family info for data_expert2
-  # data_expert[grep("Moggridgea rainbowi", data_expert$tax)]$family
+# ## Find family info for data_expert2
+# data_expert[grep("Moggridgea rainbowi", data_expert$tax)]$family
 
 data_expert <- rbind(data_expert, data_expert2); dim(data_expert)
 setDT(data_expert, key = "tax")
 rm(data_expert2)
 
-## Remove duplicates
-data_expert <- data_expert[!duplicated(data_expert[,.(ddlat, ddlon, tax, family)])]; dim(data_expert)
-
 ## Modify name for species...
 data_expert[tax == "Xanthesma argohesma nukarnensis"]
-data[tax == "Xanthesma (Argohesma) nukarnensis"]
+data[scientificName == "Xanthesma (Argohesma) nukarnensis"]
 data_expert[tax == "Xanthesma argohesma nukarnensis"]$tax = "Xanthesma (Argohesma) nukarnensis"
 
 ## Add spfile column
@@ -160,20 +65,100 @@ data_expert$class <- rep(character(), nrow(data_expert))
 data_expert$order <- rep(character(), nrow(data_expert))
 names(data_expert)[c(3,1,2,8,9,4,5,6,7)]
 data_expert <- data_expert[,c(3,1,2,8,9,4,5,6,7)]
+
+## Checks
+# x <- as.numeric(data_expert$latitude)
+# which(is.na(x))
+length(unique(data_expert$tax))
+length(unique(data_expert$spfile))
+str(data_expert)
+
+## >> Subset ALAnonALA data ####
+## Look for Psacadonotus insulanus: not found
+grep("Psacadonotus insulanus", data$scientificName)
+grep("psacadonotus_insulanus", data$spfile2)
+
+## Remove (some) species with incorrect data from ALA nonALA data based on expert input
+remove_data <- c("nunciella_kangarooensis", 
+                 "ogyris_halmaturia", 
+                 "kosciuscola_cognatus", 
+                 "kosciuscola_cuneatus", 
+                 "kosciuscola_tristis", 
+                 "kosciuscola_usitatus")
+dim(data[data$spfile2 %in% remove_data])
+dim(data); data <- data[!data$spfile2 %in% remove_data]; dim(data)
+rm(remove_data)
+
+## Subset data 
+data <- data[ , .(scientificName, latitude, longitude, class, order, family, year, data_source, spfile, spfile2)]
+data <- data[spfile2 %in% unique(data_expert$spfile)]; dim(data)
+length(unique(data$spfile))
+str(data)
+
+
+## >> Combine ALAnonALAL and expert datasets ####
+data[, spfile2 := NULL]
 names(data_expert) = names(data)
 
-str(data_expert)
-  # ## Checks
-  # x <- as.numeric(data_expert$latitude)
-  # which(is.na(x))
-
-## Combine datasets
 data <- rbind(data, data_expert)
 setDT(data, key = "spfile")
+
 dim(data); unique(data$data_source)
+length(unique(data$scientificName))
+length(unique(data$scientificName))
+rm(data_expert)
+
+## Correct and/or remove duplicates
+## Find duplicated spfile
+length(unique(data$spfile)); length(unique(data$scientificName))
+
+for (i in unique(data$scientificName)){
+  if(length(unique(data[scientificName == i]$spfile)) > 1){
+    print (i)
+  }
+}
+# [1] "Metaballus mesopterus"
+# [1] "Moggridgea rainbowi"
+# [1] "Nanodectes platycercus"
+# [1] "Xanthesma (Argohesma) nukarnensis"
+
+x <- "Metaballus mesopterus"
+unique(data[scientificName == x]$spfile)
+data[scientificName == x]$spfile <-"metaballus_mesopterus_43213"
+data[spfile == "metaballus_mesopterus_43213"]
+data[spfile == "metaballus_mesopterus_43213"]$class <- "insecta"
+data[spfile == "metaballus_mesopterus_43213"]$family <- "Tettigoniidae"
+
+x <- "Moggridgea rainbowi"
+unique(data[scientificName == x]$spfile)
+data[scientificName == x]$spfile <-"moggridgea_rainbowi_10318"
+data[spfile == "moggridgea_rainbowi_10318"]
+data[spfile == "moggridgea_rainbowi_10318"]$class <- "arachnida"
+data[spfile == "moggridgea_rainbowi_10318"]$family <- "Migidae"
+
+x <- "Nanodectes platycercus"
+unique(data[scientificName == x]$spfile)
+data[scientificName == x]$spfile <- "nanodectes_platycercus_44624"
+data[spfile == "nanodectes_platycercus_44624"]
+data[spfile == "nanodectes_platycercus_44624"]$class <- "insecta"
+data[spfile == "nanodectes_platycercus_44624"]$family <- "Tettigoniidae"
+
+x <- "Xanthesma (Argohesma) nukarnensis"
+unique(data[scientificName == x]$spfile)
+data[scientificName == x]$spfile <- "xanthesma_argohesma_nukarnensis_58525"
+data[spfile == "xanthesma_argohesma_nukarnensis_58525"]
+data[spfile == "xanthesma_argohesma_nukarnensis_58525"]$class <- "insecta"
+data[spfile == "xanthesma_argohesma_nukarnensis_58525"]$family <- "Colletidae"
+
+rm(i,x)
+
+## Find duplicates and prioritise ALA records for removal
+dim(data)
+dim(data[!duplicated(data[, .(spfile, scientificName, class, order, family, latitude, longitude)])])
+data <- setDT(data)[order(-data_source), .SD[1L] ,.(spfile, scientificName, class, order, family, latitude, longitude)]; dim(data)
 
 ## Checks for species where data is added (by species..)
-expert_sp <- unique(data_expert$scientificName)
+expert_sp <- unique(data$scientificName)
 temp <- matrix(NA, length(expert_sp), 3)
 for (i in 1:length(expert_sp)) {
   temp[i,] <- c(expert_sp[i], 
@@ -182,14 +167,43 @@ for (i in 1:length(expert_sp)) {
 }
 colnames(temp) <- c("species", "ALAnonALA data", "ALAnonALA+expert data")
 temp
-rm(data_expert, temp, i)
+rm(expert_sp, temp, i)
 
 ## Save ALAnonnALA + expert data for IUCN species
 write.csv(data, file = file.path(output_dir, "sp_with_expert_data.csv"), 
           row.names = FALSE)
 
+## Summarize data by species and data source
+data_sources <- fread(file.path(output_dir, "data_sources.csv"))[,1:2]
+unique(data$data_source)
+unique(data_sources$type)
 
+out <- data[, .N, by=.(scientificName, data_source)]
+length(unique(out$scientificName))
 
+out$data_type <- rep(character(), nrow(out))
+out[data_source %in% data_sources[type == "state"]$data_source]$data_type = "state"
+out[data_source %in% data_sources[type == "museum"]$data_source]$data_type = "museum"
+out[data_source %in% data_sources[type == "ala"]$data_source]$data_type = "ala"
+out[data_source %in% data_sources[type == "private"]$data_source]$data_type = "private"
+
+out <- out[, .(N=sum(N)),
+           by=.(scientificName, data_type)]
+out <- dcast(out, scientificName ~ data_type, value.var = "N")
+# out <- out[,c(1,2,5,3,4)]
+setDT(out, key = "scientificName")
+setorder(out, -private, na.last = TRUE)
+out[is.na(out)] <- 0
+out
+  # ## Function to replace NA in large data tables
+  # ## Ref: https://stackoverflow.com/questions/7235657/fastest-way-to-replace-nas-in-a-large-data-table
+  # f_dowle2 = function(DT) {
+  #   for (i in names(DT))
+  #     DT[is.na(get(i)), (i):=0]
+  # }
+
+write.csv(out, file = file.path(new_output_dir, "datatype_counts_sp_with_expert_data.csv"), row.names = FALSE)
+rm(out, data_sources)
 
 
 ## >> Save rds files for updated species ####
@@ -217,7 +231,7 @@ writeLines(c(""), errorlog)
 dat <- data
 all_species <- unique(dat$spfile)
 
-plan(multiprocess, workers = future::availableCores()-2)
+plan(multiprocess, workers = length(all_species))
 system.time(invisible(future.apply::future_lapply(all_species,
                                                   function(x){
                                                     tmp <- tryCatch(expr = save_spdata2(species_uid = x, 
@@ -234,7 +248,7 @@ system.time(invisible(future.apply::future_lapply(all_species,
 ## Check files
 length(list.files(spdata_dir, pattern = ".rds$"))
 length(all_species)
-rm(data, save_spdata2)
+rm(data, save_spdata2, all_species)
 
 
 ## Create polygons: from species_polygons.R ####
@@ -251,7 +265,7 @@ source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
 basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 hull.method <- "alpha.hull" # "convex.hull"  
 
-plan(multiprocess, workers = future::availableCores()-2)
+plan(multiprocess, workers = length(spfiles))
 errorlog <- paste0(new_output_dir, "/errorlog_species_polygons_expert_data_", gsub("-", "", Sys.Date()), ".txt")
 # if(file.exists(errorlog)){unlink(errorlog)}
 writeLines(c(""), errorlog)
@@ -446,7 +460,7 @@ if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 eqarea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
-registerDoMC(future::availableCores()-2)
+registerDoMC(length(spfiles))
 system.time(log <- foreach(species_dat = spfiles, 
                            .combine = rbind,
                            .errorhandling = "pass",
@@ -497,7 +511,7 @@ if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 eqarea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
-registerDoMC(future::availableCores()-2)
+registerDoMC(length(spfiles))
 system.time(log <- foreach(species_dat = spfiles, 
                            .combine = rbind,
                            .errorhandling = "pass",
@@ -557,7 +571,7 @@ wgs_crs  <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 eqarea_crs <- "+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
 ## >> Run overlap analysis in parallel: doMC ####
-registerDoMC(future::availableCores())
+registerDoMC(length(spfiles))
 system.time(log <- foreach(species_dat = spfiles, 
                            .combine = rbind,
                            .errorhandling = "pass",
@@ -637,7 +651,7 @@ species_list <- polygon_list[!polygon_list %in% csvnames]
 
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
-registerDoMC(future::availableCores())
+registerDoMC(length(species_list))
 system.time(foreach(polys = species_list,
                     .combine = rbind,
                     .errorhandling = "pass",
@@ -691,7 +705,7 @@ names(out)
 
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(new_output_dir, "species_polygon_fireoverlap_updatedsp.csv"), row.names = FALSE)
-rm(overlap_dir, species_maps, polygon_list, job_script, csvfiles, out, fire_classes, fire_vals, fire_severity, spfiles)
+rm(polygon_overlap, overlap_dir, species_maps, polygon_list, job_script, csvfiles, csvnames, out, fire_classes, fire_vals, fire_severity, spfiles)
 
 
 
@@ -746,17 +760,39 @@ rm(x)
 
 ## Add EOO/AOO information
 x <- fread(file.path(new_output_dir, "species_EOO_AOO_ahullareas_updatedsp.csv"))
-nrow(x) == nrow(out) ## because of 2 error species
-
+nrow(x) == nrow(out) ## 2 error species
+x[duplicated(x$spfile)]
+## >> Check
 out1 <- merge(out, x, by = "spfile")
 all(out1$scientificName.x == out1$scientificName.y)
 rm(out1)
+## >> Merge rows found in both datasets (excludes error species)
 x[, scientificName := NULL]
-
-out <- merge(out, x, by = "spfile")
+out1 <- merge(out, x, by = "spfile")
+names(out1); dim(out1)
+## >> Extract rows left out for the error species
+sum(!(out$spfile %in% out1$spfile)) 
+out2 <- out[!(out$spfile %in% out1$spfile)]
+dim(out2)
+## >> Checks
+dim(out1)[1] + dim(out2)[1] == dim(out)[1]
+ncol(out1) == ncol(out2)
+names(out1)[!names(out1) %in% names(out2)]
+## >> Add empty polygon information columns to out2 
+dt <- setNames(data.table(matrix(nrow = nrow(out2), ncol = length(names(out1)[!names(out1) %in% names(out2)]))), names(out1)[!names(out1) %in% names(out2)])
+out2 <- cbind(out2, dt)
+dim(out2)
+rm(dt)
+## >> Combine table for error species
+dim(out1)[1] + dim(out2)[1] == dim(out)[1]
+ncol(out1) == ncol(out2)
+out <- rbind(out1, out2)
 names(out); dim(out)
-
-all(out$Nbe_unique_occ. == out$Occurrence_Points)
+setDT(out, key = "spfile")
+rm(out1, out2)
+## >> Drop columns
+all(out$Nbe_unique_occ. == out$Occurrence_Points, na.rm = TRUE)
+# out[which(!out$Nbe_unique_occ. == out$Occurrence_Points),][, .(spfile, Nbe_unique_occ., Occurrence_Points)]
 out[, Nbe_unique_occ. := NULL]
 out[, c("Nbe_loc", "Category_CriteriaB", "Category_code", 
         "Category_AOO", "Category_EOO") := NULL]
@@ -791,5 +827,9 @@ setDT(out, key = "spfile"); dim(out)
 write.csv(out, file = file.path(new_output_dir, "invert_fireoverlap_expertdata.csv"), 
           row.names = FALSE)
 
+dim(out)
+length(unique(out$spfile))
+length(unique(out$scientificName))
+out$scientificName[duplicated(out$scientificName)]
 
 
