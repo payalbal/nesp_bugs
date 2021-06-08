@@ -1,5 +1,8 @@
 ## Integrating ALA and nonALA data for species found in non ALA data
 
+## >>>>>> PREVIOUS SCRIPT <<<<<<< ####
+file.edit("/tempdata/workdir/nesp_bugs/scripts/nonala_processing.R")
+
 
 ## Set working environment ####
 ## _______________________________________________
@@ -463,7 +466,7 @@ for (sp in sensitive_sp){
 
 ## Remove non natives ####
 ## _____________________________________________________________
-## see data_corrections/exotics_alanonala.csv 
+## see data_corrections/exotics_alanonala.csv for list generated below
 exotics <- fread(file.path(bugs_dir, "ALA", 
                            "GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv"))
 
@@ -551,86 +554,6 @@ x <- setorder(dat[, .N, data_source], -N)
 sum(x[grep("WA", x$data_source),]$N)
 
 
-## >>>>>> DATA CORRECTION STEPS TO BE ADDED HERE <<<<<<< ####
-
-
-
-
-## Save rds files by species ####
-## _____________________________________________________________
-spdata_dir <- file.path(output_dir, "ala_nonala_data" ,"spdata")
-  # file.remove(file.path(spdata_dir, dir(path = spdata_dir)))
-  # unlink(spdata_dir, recursive = TRUE, force = TRUE)
-if(!dir.exists(spdata_dir)){dir.create(spdata_dir)}
-
-## Save by species (reduced) function
-save_spdata2 <- function(species_uid, data, data_dir){
-  
-  temp <- dat[spfile == species_uid]
-  spfile <- unique(temp$spfile)
-  
-  if (length(spfile) > 1){
-    stop("Error: More than 1 unique spfile for naming species file...")
-  }
-  
-  saveRDS(as.data.table(temp),
-          file = file.path(data_dir, paste0(spfile, ".rds")))
-}
-
-## In parallel ####
-plan(multiprocess, workers = future::availableCores()-2)
-options(future.globals.maxSize = +Inf)
-
-## Error log file
-errorlog <- paste0(output_dir, "/errorlog_data_ALAnonALA_", gsub("-", "", Sys.Date()), ".txt")
-# errorlog <- paste0("/tempdata/workdir/nesp_bugs/temp/errorlog_ala_byspeciesR_", gsub("-", "", Sys.Date()), ".txt") 
-writeLines(c(""), errorlog)
-
-dat <- fread(file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
-all_species <- unique(dat$spfile)
-
-start.time <- Sys.time()
-invisible(future.apply::future_lapply(all_species,
-                                      function(x){
-                                        tmp <- tryCatch(expr = save_spdata2(species_uid = x, 
-                                                                            data = dat, 
-                                                                            data_dir = spdata_dir),
-                                                        error = function(e){ 
-                                                          print(paste("\nError: More than 1 unique spfile for naming species file for...", x))
-                                                          cat(paste(x, "\n"),
-                                                              file = errorlog, 
-                                                              append = TRUE)
-                                                        })
-                                      }))
-end.time <- Sys.time()
-end.time - start.time
-
-
-## Check files
-length(list.files(spdata_dir, pattern = ".rds$"))
-length(all_species)
-
-
-
-# ## EXTRAS
-# dat <- data.frame("id" = 1:10,
-#                   "data_source" = c(rep("ALA", 4), 
-#                                     rep("Other", 3), 
-#                                     rep("VBA", 3)),
-#                   "scientificName" = c(rep("pinkus unicornius", 2), 
-#                                        rep("bunyips ferocii", 6), 
-#                                        rep("nerdius quanticus", 2)),
-#                   "latitude" = c(-37, rep(-37.5, 2), rep(-38, 3), 
-#                                  rep(-37.5, 2), rep(-38, 2)),
-#                   "longitude" = c(rep(145, 2), 145.5, rep(142, 3), 
-#                                   rep(145, 2), rep(145.5, 2)))
-# 
-# dat2 <- setDT(dat)
-# 
-# dat4 <- setorder(dat2[order(-data_source) , .SD[1L] ,.(scientificName, latitude, longitude)], id)
-#   # ## same as...
-#   # dat5 <- setorder(dat2, -data_source)
-#   # dat5 <- dat5[!duplicated(dat[,.(scientificName, latitude, longitude)])]
-# 
-# dat3 <- unique(dat2, by = c("data_source", "scientificName", "latitude", "longitude"))
-# dat5 <- unique(dat3, by = c("scientificName", "latitude", "longitude"))
+## >>>>>> NEXT SCRIPT <<<<<<< ####
+# data_correction_speciesname.R
+file.edit("/tempdata/workdir/nesp_bugs/scripts/data_ALAnonALA_corrections.R")

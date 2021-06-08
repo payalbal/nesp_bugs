@@ -1,6 +1,9 @@
 ## Clean downloaded ALA data and summarise
 ## Notes: Each occurrence record has a record id, we can use `occurrence_details` to get additional information if you need something extra later
 
+## >>>>>> PREVIOUS SCRIPT <<<<<<< ####
+file.edit("")
+
 
 ## Set working environment ####
 rm(list = ls())
@@ -351,3 +354,5 @@ saveRDS(ala_dat, file = file.path(output_dir, paste0("clean1_ala_", Sys.Date(),"
 write.csv(ala_dat, file = file.path(output_dir, paste0("clean1_ala_", Sys.Date(),".csv")))
 
 
+## >>>>>> NEXT SCRIPT <<<<<<< ####
+file.edit("/tempdata/workdir/nesp_bugs/scripts/ala_processing2.R")

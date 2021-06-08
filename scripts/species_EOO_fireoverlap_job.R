@@ -22,27 +22,31 @@ if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/polygon_overlap.R")
 
 
-
 ## Fire overlap for species WITH EOO polygons  ####
 ## >> Load in spdf data for species with EOO ####
 species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
 
+## >> Find missing species from outputs (if any) ####
+csvfiles <- list.files(overlap_dir, pattern = ".csv$",
+                       full.names = TRUE, all.files = TRUE)
+csvnames <- tools::file_path_sans_ext(basename(csvfiles))
+species_list <- polygon_list[!polygon_list %in% csvnames]
+
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native_paa.tif"))
 fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
-
 
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
 registerDoMC(76)
-system.time(foreach(polys = polygon_list,
+system.time(foreach(polys = species_list,
                     .combine = rbind,
                     .errorhandling = "pass",
                     .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
 
-                      polygon_overlap(species_name = polys, # polys = polygon_list[335]
+                      polygon_overlap(species_name = polys, # polys = species_list[335]
                                       species_poly = species_maps[[polys]],
                                       shapefile_dir = shapefile_dir,
                                       fire_vals = fire_vals,
@@ -51,33 +55,4 @@ system.time(foreach(polys = polygon_list,
                     })
 
 
-# ## Error runs.... ####
-# ## >> Display results summary ####
-# csvfiles <- list.files(overlap_dir, pattern = ".csv$",
-#                        full.names = TRUE, all.files = TRUE)
-# 
-# ## >> Find missing species from outputs ####
-# csvnames <- tools::file_path_sans_ext(basename(csvfiles))
-# error_list <- polygon_list[!polygon_list %in% csvnames]
-# 
-# # ## Species_off extent
-# # error_list <- fread(file.path(output_dir, "species_offextent.csv"))
-# # error_list <- error_list$x
-# 
-# ## Reruns ####
-# ## Repeat this till most of the errors are fixed
-# ## Errors seem to be an artefact of the system rather than problem with data/code
-# registerDoMC(76)
-# system.time(foreach(polys = error_list,
-#                     .combine = rbind,
-#                     .errorhandling = "pass",
-#                     .packages = c('sp', 'raster',
-#                                   'rgdal', 'data.table')) %dopar%{
-# 
-#                                     polygon_overlap(species_name = polys,
-#                                                     species_poly = species_maps[[polys]],
-#                                                     shapefile_dir = shapefile_dir,
-#                                                     fire_vals = fire_vals,
-#                                                     fire_classes = fire_classes,
-#                                                     outdir = overlap_dir)
-#                                   })
+## Errors seem to be an artefact of the system rather than problem with data/code

@@ -24,6 +24,17 @@ if(!dir.exists(file.path(bugs_dir, "outputs", "native_vegetation"))){
   dir.create(file.path(bugs_dir, "outputs", "native_vegetation"))
 }
 
+## Preliminnary analysis area ####
+## Source: https://www.environment.gov.au/system/files/pages/a8d10ce5-6a49-4fc2-b94d-575d6d11c547/files/preliminary-analysis-area-19-jan-2020.pdf
+paa <- file.path(bugs_dir, "Preliminary_Analysis_Areas/prelim_analysis_areas_dissolve.shp")
+paa <- rgdal::readOGR(paa)
+
+## Reproject PAA to equal area
+t_srs = '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
+paa <- sp::spTransform(paa, CRSobj = crs(t_srs))
+writeOGR(paa2, dsn = file.path(output_dir, "fire"), layer = "prelim_analysis_areas_dissolve_eqar", 
+         driver = "ESRI Shapefile", overwrite_layer = TRUE)
+rm(paa)
 
 ## Vegetation layer: NVIS ####
 ## Source: https://www.environment.gov.au/land/native-vegetation/national-vegetation-information-system/data-products
@@ -79,6 +90,16 @@ maskfile <- file.path(output_dir, "native_vegetation", "nvis_v6_reclass.tif")
 
 source(file.path(getwd(), "scripts/gdal_calc.R"))
 gdalmask(infile = infile, mask = maskfile, outfile = outfile, output_Raster = FALSE, overwrite=TRUE, verbose=TRUE)
+
+## Clip fire severity raster with Preliminary analysis area shapefile
+infile <- outfile
+outfile <- gsub(".tif", "_paa.tif", infile)
+maskfile <- file.path(output_dir, "fire", "prelim_analysis_areas_dissolve_eqar.shp") 
+ 
+system(paste0("gdalwarp -of GTiff -cutline ", maskfile, " -cl prelim_analysis_areas_dissolve_eqar -crop_to_cutline ", infile, " ", outfile))
+
+gdalinfo(outfile)
+sort(unique(raster(outfile)[]))
 
 
 ## NIAFED vs GEEBAM ####
@@ -186,25 +207,3 @@ gIntersection(regions, lads, byid = TRUE, drop_lower_td = TRUE)
 # source("/tempdata/workdir/nesp_bugs/scripts/gdal_polygonizeR.R")
 # system.time(p <- gdal_polygonizeR(outfile))
 
-
-# ## Preliminnary analysis area
-# ## source: ...??
-# paa <- file.path(bugs_data, "Preliminary_Analysis_Areas/prelim_analysis_areas_dissolve.shp")
-# paa <- rgdal::readOGR(paa)
-# 
-# ## Reproject PAA to equal area (?)
-# fire <- raster(file.path(output_dir, "fire", "severity3_eqar250.tif"))
-# paa2 <- sp::spTransform(paa, CRSobj = crs(fire))
-# 
-# clearPlot()
-# quickPlot::Plot(fire,
-#                 title = "",
-#                 axes = FALSE,
-#                 legend = FALSE,
-#                 col = "khaki",
-#                 addTo = "fire",
-#                 new = TRUE)
-# quickPlot::Plot(paa2,
-#                 cols = "tomato3",
-#                 title = "",
-#                 addTo = "fire")

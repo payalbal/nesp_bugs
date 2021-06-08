@@ -38,31 +38,21 @@ polygon_list <- names(species_maps)
 
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native_paa.tif"))
 fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 
 
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
-registerDoMC(future::availableCores()-2)
-system.time(foreach(polys = polygon_list,
-                      .combine = rbind,
-                      .errorhandling = "pass",
-                      .packages = c('sp', 'raster', 'rgdal', 'data.table')) %dopar%{
-
-                        polygon_overlap(species_name = polys, # polys = polygon_list[335]
-                                        species_poly = species_maps[[polys]],
-                                        shapefile_dir = shapefile_dir,
-                                        fire_vals = fire_vals,
-                                        fire_classes = fire_classes,
-                                        outdir = overlap_dir)
-                      })
+job_script <- file.path("/tempdata/workdir/nesp_bugs/", "scripts", "species_EOO_fireoverlap_job.R")
+rstudioapi::jobRunScript(job_script, encoding = "unknown", workingDir = "/tempdata/workdir/nesp_bugs",
+                         importEnv = FALSE, exportEnv = "")
 
 
 
-## Error checking ####
-## >> Display results summary ####
+## Error runs ####
+## Check files
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of input species: "),
@@ -72,45 +62,25 @@ message(cat("Number of output files: "),
 length(polygon_list) - length(csvfiles)
 
 
-## >> Find missing species from outputs ####
-csvnames <- tools::file_path_sans_ext(basename(csvfiles))
-error_list <- polygon_list[!polygon_list %in% csvnames]
-message(cat("Number of species in error list: "),
-        length(error_list))
-
-
-## >> Reruns I - batch runs ####
-## Repeat this till most of the errors are fixed
-## Errors seem to be an artefact of the system rather than problem with data/code
-if(length(error_list) <= future::availableCores()-2) {
-  registerDoMC(length(error_list))
-} else{
-  registerDoMC(future::availableCores()-2)
+## >> Reruns I - repeat till most of the errors are fixed ####
+if (length(polygon_list) - length(csvfiles) > 0){
+  jobRunScript(job_script, encoding = "unknown", workingDir = "/tempdata/workdir/nesp_bugs",
+               importEnv = FALSE, exportEnv = "")
 }
-system.time(foreach(polys = error_list,
-                    .combine = rbind,
-                    .errorhandling = "pass",
-                    .packages = c('sp', 'raster',
-                                  'rgdal', 'data.table')) %dopar%{
-                                    
-                                   polygon_overlap(species_name = polys,
-                                                    species_poly = species_maps[[polys]],
-                                                    shapefile_dir = shapefile_dir,
-                                                    fire_vals = fire_vals,
-                                                    fire_classes = fire_classes,
-                                                    outdir = overlap_dir)
-                                  })
 
-# unlink(shapefile_dir, recursive = TRUE, force = TRUE)
+
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Number of input species: "),
         length(polygon_list))
 message(cat("Number of output files: "),
         length(csvfiles))
-csvnames <- basename(tools::file_path_sans_ext(csvfiles))
-error_list[!error_list %in% csvnames]
 
+## Find missing species from outputs
+csvnames <- basename(tools::file_path_sans_ext(csvfiles))
+error_list <- polygon_list[!polygon_list %in% csvnames]
+message(cat("Number of species in error list: "),
+        length(error_list))
 
 ## >> Reruns II - individual species runs ####
 polys = error_list[2]

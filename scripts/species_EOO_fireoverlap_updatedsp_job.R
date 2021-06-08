@@ -36,7 +36,7 @@ csvnames <- tools::file_path_sans_ext(basename(csvfiles))
 species_list <- polygon_list[!polygon_list %in% csvnames]
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native_paa.tif"))
 fire_vals <- fire_severity[]
 fire_classes <- sort(unique(na.omit(fire_vals)))
 

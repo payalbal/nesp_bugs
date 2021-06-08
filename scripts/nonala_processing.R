@@ -1,5 +1,7 @@
 ## NonALA data processing - WGS 84
 
+## >>>>>> PREVIOUS SCRIPT <<<<<<< ####
+file.edit("/tempdata/workdir/nesp_bugs/scripts/ala_processing2.R")
 
 ## Set working environment ####
 rm(list = ls())
@@ -1383,6 +1385,9 @@ length(unique(dat1$spfile))
 write.csv(dat1, file = file.path(output_dir, paste0("clean1_nonala_", Sys.Date(),".csv")), 
           row.names = FALSE)
 
+
+## >>>>>> NEXT SCRIPT <<<<<<< ####
+file.edit("/tempdata/workdir/nesp_bugs/scripts/data_ALAnonALA.R")
 
 
 

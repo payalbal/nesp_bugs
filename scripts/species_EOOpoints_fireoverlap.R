@@ -40,7 +40,7 @@ x <- basename(tools::file_path_sans_ext(spfiles))
 spfiles <- spfiles[x %in% points_list]
 
 ## >> Load in fire severity raster (re-classed) and get unique classes ####
-fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native_paa.tif"))
 fire_classes <- sort(unique(na.omit(fire_severity[])))
 
 ## Function parameters

@@ -16,10 +16,10 @@ output_dir = file.path(bugs_dir, "outputs")
 
 
 ## Subset data ####
-aqualist <- fread(file.path(aqua_dir, "aquatic_subset_JM.csv"))
-aqualist <- tolower(gsub(" ", "_", aqualist$Species))
-
-data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
+  # aqualist <- fread(file.path(aqua_dir, "aquatic_subset_JM.csv"))
+  # aqualist <- tolower(gsub(" ", "_", aqualist$Species))
+data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"))
+aqualist <- fread(file.path(aqua_dir, "aquatic.csv"))
 aqua_data <- data[gsub("_$", "", gsub("\\d+$", "", data$spfile)) %in% aqualist]
 
   # ## Same as...
@@ -42,10 +42,6 @@ plot(ausmask, axes = FALSE, legend = FALSE, box = FALSE)
 plot(points, add = TRUE, pch = 18, col = "tomato3", cex = 0.5)
 
 aqua_data[, .N, by = "scientificName"]
-
-  # ## Preliminary analysis area
-  # paa <- file.path(bugs_data, "Preliminary_Analysis_Areas/prelim_analysis_areas_dissolve.shp")
-  # paa <- rgdal::readOGR(paa)
 
 
 ## Slugrisk layer processing - to be done once ####
@@ -80,14 +76,13 @@ system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -11107
               infile, " ", outfile))
 gdalUtils::gdalinfo(outfile)
 
-## 
+## Assign NAs to no data
 infile <- outfile
 outfile <- gsub("_p.tif", "_NA.tif", infile)
 system(paste0("gdal_calc.py -A ", infile,
               " --calc='(A==1)*1 + (A==2)*2 + (A==0)*0' --NoDataValue=0",
               " --outfile=", outfile))
 sort(unique(na.omit(raster(outfile)[])))
-
 
 
 ## Point overlaps ####
@@ -103,7 +98,7 @@ spnames <- gsub("_\\d+$", "", tools::file_path_sans_ext(basename(spfiles)))
 spfiles <- spfiles[spnames %in% aqualist]
 
 ## >> Load in fire severity raster
-fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native.tif"))
+fire_severity <- raster(file.path(output_dir, "fire", "severity5_eqar250_native_paa.tif"))
 fire_classes <- sort(unique(na.omit(fire_severity[])))
 
 ## >> Slugrisk raster
@@ -139,7 +134,7 @@ message(cat("Number of input species: "),
 message(cat("Number of output files: "),
         length(csvfiles))
 
-## Output table
+## >> Output table ####
 point <- do.call("rbind", lapply(csvfiles, fread))
 names(point)[1] <- "spfile"
 setDT(point, key = "spfile")
@@ -147,7 +142,7 @@ names(point)[-c(1, ncol(point))] <- paste0(names(point)[-c(1, ncol(point))], "_P
 
 
 
-## >> Polygon overlaps ####
+## Polygon overlaps ####
 shapefile_dir = file.path(output_dir, "species_shapefiles")
 if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
 
@@ -201,12 +196,14 @@ message(cat("Number of input species: "),
 message(cat("Number of output files: "),
         length(csvfiles))
 
-## Output table
+## >> Output table ####
 poly <- do.call("rbind", lapply(csvfiles, fread))
 names(poly)[1] <- "spfile"
 setDT(poly, key = "spfile")
 names(poly)[-c(1, ncol(poly))] <- paste0(names(poly)[-c(1, ncol(poly))], "_Area")
 
+
+## Combine polygons and point output tables ####
 ## Merge rows for species with polygon overlap
 out1 <- merge(point, poly, by = "spfile")
 dim(out1)
@@ -233,6 +230,12 @@ rm(out1, out2, point, poly)
 ## Checks on merged table
 sum(is.na(out$Species_Polygon))
 sum(!is.na(out$Species_Polygon))
+
+## Add confidence columns
+
+
+## Add region columnns
+
 
 ## Save table
 setDT(out, key = "spfile")

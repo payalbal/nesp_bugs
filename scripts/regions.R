@@ -27,7 +27,7 @@ recovery_poly <- readOGR(file.path(bugs_dir,
                                    "regions.shp"),
                          layer = "regions")
 
-## Reproject bushfire recovery regions to match fire severity raster
+## Reproject regions to match fire severity raster
 ## NOTE: Cannot do this in one step eith gdal_rasterize (see commneted section below)
 infile <- file.path(bugs_dir, "Bushfire_recovery_regions", "regions.shp")
 outfile <- file.path(output_dir, "regions", "bushfire_recovery.tif")
@@ -38,6 +38,8 @@ infile <- outfile
 outfile <- gsub(".tif", "_p.tif", outfile)
 system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 -s_srs 'EPSG:4326' -t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ",
               infile, " ", outfile))
+gdalinfo(outfile)
+sort(unique(raster(outfile)[]))
 
 raster(outfile)
 region_vals <- raster(outfile)[]
@@ -65,7 +67,7 @@ write.csv(region_names,
 state_poly <- readOGR(file.path(output_dir, "masks", "auslands_wgs84.shp"), 
                       layer = "auslands_wgs84") 
 
-## Reproject bushfire recovery regions to match fire severity raster
+## Reproject regions to match fire severity raster
 ## NOTE: Cannot do this in one step eith gdal_rasterize (see commneted section below)
 infile <- file.path(output_dir, "masks", "auslands_wgs84.shp")
 outfile <- file.path(output_dir, "regions", "auslands_wgs84.tif")
@@ -83,10 +85,32 @@ region_classes <- sort(unique(na.omit(region_vals)))
 
 region_names <-   data.frame(matrix(nrow = length(region_classes), ncol = 2))
 names(region_names) <- c("code", "name")
-region_names$code <- 0:10
+region_names$code <- region_classes
 region_names$name <- c('N/A', 'ACT', 'NSW', 'VIC', 
                        'NT', 'QLD', 'SA', 'TAS', 
                        'WA', 'AET', 'JBT')
 write.csv(region_names, 
           file = file.path(output_dir, "state_names.csv"), 
+          row.names = FALSE)
+
+## Clip regions to Preliminary analysis area
+## Note: See firmap.R for PAA processing
+infile <- outfile
+outfile <- gsub(".tif", "_paa.tif", outfile)
+maskfile <- file.path(output_dir, "fire", "prelim_analysis_areas_dissolve_eqar.shp") 
+
+system(paste0("gdalwarp -of GTiff -cutline ", maskfile, " -cl prelim_analysis_areas_dissolve_eqar -crop_to_cutline ", infile, " ", outfile))
+
+gdalinfo(outfile)
+sort(unique(raster(outfile)[]))
+region_classes <- sort(unique(na.omit(region_vals)))
+
+region_names <-   data.frame(matrix(nrow = length(region_classes), ncol = 2))
+names(region_names) <- c("code", "name")
+region_names$code <- region_classes
+region_names$name <- c('N/A', 'ACT', 'NSW', 'VIC', 
+                       'QLD', 'SA', 'TAS', 
+                       'WA', 'AET', 'JBT')
+write.csv(region_names, 
+          file = file.path(output_dir, "state_paa_names.csv"), 
           row.names = FALSE)

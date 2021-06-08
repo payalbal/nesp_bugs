@@ -48,6 +48,27 @@ setDT(dat, key = "spfile", "scientificName")
 write.csv(dat, file = file.path(output_dir, "invert_fireoverlap_v02.csv"), 
           row.names = FALSE)
 
+## Remove marine & exotics ####
+exotic <- fread(file.path(corr_dir, "exotics_JM.csv"))$spfile
+marine <- fread(file.path(corr_dir, "invert_fireoverlap_v02_marine_JM.csv"))
+marine <- marine[, .(spfile, Marine)][Marine == 1]$spfile
+
+dim(dat); dat <- dat[!spfile %in% c(exotic, marine)]; dim(dat)
+
+message(cat("Number of unique species in updated data: "),
+        length(unique(dat$spfile)))
+
+rm(exotic, marine)
+
+## Save table ####
+names(dat); dim(dat)
+length(unique(dat$spfile))
+length(unique(dat$scientificName))
+
+setDT(dat, key = "spfile", "scientificName")
+write.csv(dat, file = file.path(output_dir, "invert_fireoverlap_v04.csv"), 
+          row.names = FALSE)
+
 
 summary(dat)
 
