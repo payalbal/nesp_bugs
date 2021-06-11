@@ -1,7 +1,7 @@
 ## Fire overlap analysis function for species polygons
 ## Collaborator: Casey Visintin
 
-polygon_overlap <- function(species_name, species_poly, shapefile_dir, fire_vals, fire_classes, outdir){
+polygon_paa_overlap <- function(species_name, species_poly, shapefile_dir, fire_res, fire_crs, fire_extent, fire_vals, fire_classes, outdir){
   
   ## Write spatial data to disk if coming from RDS file
   writeOGR(species_poly, dsn = shapefile_dir, layer = species_name, driver = "ESRI Shapefile", overwrite_layer = TRUE)
@@ -12,10 +12,14 @@ polygon_overlap <- function(species_name, species_poly, shapefile_dir, fire_vals
                 file.path(shapefile_dir, species_name), ".shp ",
                 file.path(shapefile_dir, species_name), ".tif"))
   
-  system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 -s_srs 'EPSG:4326' -t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ",
+  system(paste0("gdalwarp -overwrite -ot Byte -tr ", 
+                paste(fire_res, collapse = " "), " -te ", 
+                paste(fire_extent[1], fire_extent[3], 
+                      fire_extent[2], fire_extent[4]), 
+                " -s_srs 'EPSG:4326' -t_srs '", fire_crs, "' ",
                 file.path(shapefile_dir, species_name), ".tif ",
                 file.path(shapefile_dir, species_name), "_p.tif"))
-    ## extent clips out islands, but we need to do this because fire map has this extent
+  ## extent clips out islands, but we need to do this because fire map has this extent
   
   
   ## Create table of areas within each fire class

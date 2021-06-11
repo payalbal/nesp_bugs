@@ -23,7 +23,12 @@ source("/tempdata/workdir/nesp_bugs/scripts/region_overlap.R")
 spfiles <- list.files(spdata_dir, pattern= ".rds$", full.names = TRUE)
 length(spfiles)
 
-## Bushfire recovery regions overlap ####
+
+
+
+## I. Bushfire recovery regions overlap ####
+## ---------------------------------------------
+
 ## >> Load bushfire recovery regions layer
 ## Source: DAWE, Fiona Woods
 region <- raster(file.path(output_dir, "regions","bushfire_recovery_p.tif"))
@@ -88,7 +93,11 @@ write.csv(out, file = file.path(output_dir, "species_by_bushfireregions.csv"), r
 # unlink(overlap_dir, recursive = TRUE)
 
 
-## States overlap ####
+
+
+## II. States overlap ####
+## ---------------------------------------------
+
 ## >> Load state boundaries layer
 ## Source: https://data.gov.au/data/dataset/geodata-coast-100k-2004
 ## See data processinf decision tree doc for steps involved...
@@ -151,7 +160,11 @@ setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_by_states.csv"), row.names = FALSE)
 
 
-## States overlap - Clipped by PAA####
+
+
+## III. States overlap - Clipped by PAA ####
+## ---------------------------------------------
+
 ## >> Load state boundaries layer
 ## Source: https://data.gov.au/data/dataset/geodata-coast-100k-2004
 ## See data processinf decision tree doc for steps involved...

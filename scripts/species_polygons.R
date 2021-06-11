@@ -228,11 +228,11 @@ setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_EOO_AOO_ahullareas.csv"),
           row.names = FALSE)
 
-message(cat("#species with EOOs: "),
+message(cat("Number of species with EOOs: "),
         nrow(out[!is.na(EOO)]))
-message(cat("#species without EOOs (including 6 error species): "),
+message(cat("Number of species without EOOs (including 6 error species): "),
         nrow(out[is.na(EOO)]))
-message(cat("max #records for species without EOOs (excluding species with errors): "),
+message(cat("max number of records for species without EOOs (excluding species with errors): "),
         max(out[!(scientificName %in% temp$scientificName) & is.na(EOO)]$Nbe_unique_occ.))
 
 

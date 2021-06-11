@@ -394,15 +394,18 @@ write.csv(data, file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"),
           row.names = FALSE)
 
 message(cat("Number of unique species in updated data: "),
-        length(unique(data0$spfile)))
+        length(unique(data$spfile)))
 message(cat("Total number of records in updated data: "),
-        nrow(data0))
+        nrow(data))
 
 # Number of unique species in updated data: 45544
 # Total number of records in updated data: 343093
 
-
-
+x <- data[, .N, by = "spfile"]; dim(x)
+message(cat("Number of species with 1 -2 records: "),
+        nrow(x[N <= 2]))
+message(cat("Number of species with > 2 records: "),
+        nrow(x[N > 2]))
 
 ## >> Save rds files for species ####
 ## ------------------------------------------------------------- ##
