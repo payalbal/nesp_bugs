@@ -174,7 +174,22 @@ write.csv(trait, file = file.path(output_dir,
                                        Sys.Date(), ".csv")), 
           row.names = FALSE)
 
-
+  # ## Checks
+  # names(out)[grep("_OLD|_NEW", names(out))]
+  # 
+  # all(out$scientificName_NEW == out$scientificName_OLD)
+  # which(out$scientificName_NEW != out$scientificName_OLD)
+  # out[out$scientificName_NEW != out$scientificName_OLD][, .(scientificName_OLD, scientificName_NEW)]
+  # 
+  # all(out$order_NEW == out$order_OLD)
+  # sum(out$order_NEW != out$order_OLD, na.rm = TRUE)
+  # out[out$order_NEW != out$order_OLD][, .(order_OLD, order_NEW)]
+  # 
+  # ## Save taxonomic information table
+  # out <- fread(file.path(output_dir, "invert_overlap_traits_2021-06-11.csv"))
+  # names(out)[grep("_OLD|_NEW", names(out))]
+  # 
+  # x <- out[!duplicated(data[,.(spfile, scientificName, class, order, family)])][, .(spfile, scientificName, class, order, family)]
 
 
 ## Save table truncated to species with > 0 records in PAA ####

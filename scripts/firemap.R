@@ -38,10 +38,11 @@ rm(paa)
 
 ## Vegetation layer: NVIS ####
 ## Source: https://www.environment.gov.au/land/native-vegetation/national-vegetation-information-system/data-products
-## Convert to tiff and reproject acc to fire layer
+## Convert to tiff and reproject acc to fire layer 
 # r <- raster(file.path(bugs_dir, "native_vegetation", "GRID_NVIS6_0_AUST_EXT_MVG/aus6_0e_mvg/z001001.adf"))
 infile <- file.path(bugs_dir, "native_vegetation", "GRID_NVIS6_0_AUST_EXT_MVG/aus6_0e_mvg/z001001.adf")
 outfile <- file.path(output_dir, "native_vegetation", "nvis_v6.tif")
+  ##  !! BEWARE OF HARDCODED EXTENT, RES I& CRS N SYSTEM CALL !!
 system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 ",
               "-t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ", infile, " ", outfile))
 gdalUtils::gdalinfo(outfile)
@@ -67,6 +68,7 @@ sort(unique(na.omit(temp)))
 ## Reproject raster to t_srs and 250m resolution
 infile <- file.path(bugs_dir, "fire/AUS_GEEBAM_Fire_Severity_NIAFED20200224_QGIS/AUS_GEEBAM_Fire_Severity_QGIS_NIAFED20200224.tif")
 outfile <- file.path(output_dir, "fire", "severity5_eqar250.tif")
+  ##  !! BEWARE OF HARDCODED EXTENT, RES I& CRS N SYSTEM CALL !!
 system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 ",
               "-t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ", infile, " ", outfile))
 gdalUtils::gdalinfo(outfile)
