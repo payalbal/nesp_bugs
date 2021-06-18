@@ -4,7 +4,7 @@ gc()
 # system("ps")
 # system("pkill -f R")
 
-x <- c("data.table")
+x <- c("data.table", "sp", "raster", "fields")
 lapply(x, require, character.only = TRUE)
 rm(x)
 
@@ -34,3 +34,18 @@ trait_data <- data[spfile %in% trait_sp]
 
 ## Check
 length(unique(trait_data$spfile)) == sum(trait$spfile %in% data$spfile)
+
+## Mapping
+
+basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
+plot(readOGR(basemap_file))
+
+
+ausmask <- raster(file.path(output_dir, "masks", "ausmask_noaa_1kmWGS_NA.tif"))
+col = grey.colors(3000, start = 0, end = 1, gamma = 2.2, alpha = NULL)
+plot(ausmask, box = F, axes = F, legend = F, zlim = c(0,1), col = col)
+
+
+
+
+

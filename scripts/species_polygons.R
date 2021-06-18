@@ -38,7 +38,7 @@ spfiles <- list.files(spdata_dir, pattern= ".rds$", full.names = TRUE)
 message(cat("Total number of species in cleaned ALA data: "),
         length(spfiles))
 
-## >> Run IUCN.eval in parallel ####
+## Run IUCN.eval in parallel ####
 source("~/gsdms_r_vol/tempdata/workdir/nesp_bugs/scripts/conr_iucn_eval.R")
 basemap_file <- file.path(output_dir, "masks", "auslands_1poly_wgs84.shp")
 hull.method <- "alpha.hull" # "convex.hull"  
@@ -70,10 +70,10 @@ system.time(
         )
       }, future.seed = TRUE)))
 
-## >> Check files ####
+## Check files
 csvfiles <- list.files(polygons_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
-rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Total number of input species files from cleaned ALA data: "),
         length(spfiles))
@@ -86,25 +86,29 @@ message(cat("Number of .rds output files created from IUCN.eval(): "),
 
 
 
-## Resolve errors ####
+## Error runs - I ####
 ## List species not in output files
-errorlog <- file.path(output_dir, "errorlog_species_polygons_corrections_20210604.txt")
+errorlog <- file.path(output_dir, "errorlog_species_polygons_corrections_20210617.txt")
 errorfiles <- trimws(readLines(errorlog)[-1])
-message(cat("Number of species showing errors: "),
-        length(errorfiles))
 
-## Checks
-length(csvfiles)+length(errorfiles) == length(spfiles)
-all(errorfiles %in% spfiles)
-
-## >> Batch rerun for species showing errors ####
+## Error runs - II ####
 output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
 input_sp <- basename(tools::file_path_sans_ext(spfiles))
 input_sp[!input_sp %in% output_sp]
+errorfiles <- spfiles[!input_sp %in% output_sp]
+
+## Checks & reurns ####
+message(cat("Number of species showing errors: "),
+        length(errorfiles))
+
+length(csvfiles)+length(errorfiles) == length(spfiles)
+all(errorfiles %in% spfiles)
+
 message(cat("error species == species not found in rds output files: "),
-        all(basename(tools::file_path_sans_ext(errorfiles)) 
+        all(basename(tools::file_path_sans_ext(errorfiles))
             %in% input_sp[!input_sp %in% output_sp]))
 
+## Run IUCN.eval in parallel ####
 mc.cores = future::availableCores()-2
 set.seed(1, kind = "L'Ecuyer-CMRG")
 system.time(invisible(mclapply(errorfiles,
@@ -116,10 +120,11 @@ system.time(invisible(mclapply(errorfiles,
                                iucn_outpath = polygons_dir,
                                mc.cores = mc.cores)))
 
-## Check files & rerun if required
+
+## Error runs - III ####
 csvfiles <- list.files(polygons_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
-rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$",
                        full.names = TRUE, all.files = TRUE)
 message(cat("Total number of input species files from cleaned ALA data: "),
         length(spfiles))
@@ -132,11 +137,10 @@ output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
 input_sp[!input_sp %in% output_sp]
 errorfiles <- spfiles[!input_sp %in% output_sp]
 
-## Individual reruns...
 setwd(working_dir)
 basemap <- readOGR(basemap_file)
 
-dat <- as.data.table(readRDS(grep("blakistonia_mainae_793", spfiles, 
+dat <- as.data.table(readRDS(grep("desognaphosa_yabbra_1043", spfiles,
                                   value = TRUE)))
 dim(dat)
 spname <- unique(dat$spfile)
@@ -165,7 +169,7 @@ saveRDS(out, file = paste0(polygons_dir, "/", spname, ".rds"))
 rm(dat, spname, out)
 
 ## >> Visualise species with unresolved errors ####
-rdsfiles <- list.files(polygons_dir, pattern = ".rds$", 
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$",
                        full.names = TRUE, all.files = TRUE)
 output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
 input_sp[!input_sp %in% output_sp]
@@ -187,23 +191,15 @@ for (e in errorfiles){
   plot(sp, add = TRUE, pch = 8, cex = 3, col = "tomato3")
 
 }
+rm(dat, dat.spdf, sp, wgs_crs)
 
 
 ## Save IUCN.eval() outputs ####
-## >> List species not in output files ####
-rdsfiles <- list.files(polygons_dir, pattern = ".rds$",
-                       full.names = TRUE, all.files = TRUE)
-output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
-input_sp <- basename(tools::file_path_sans_ext(spfiles))
-errorsp <- input_sp[!input_sp %in% output_sp]
-errorfiles <- spfiles[!input_sp %in% output_sp]
-
 ## >> AOO & EOO areas ####
 ## >> Save combined .csv output files from IUCN.eval() as data.table
 csvfiles <- list.files(polygons_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
-out <- do.call("rbind", lapply(csvfiles , read.csv))
-dim(out)
+out <- do.call("rbind", lapply(csvfiles , read.csv)); dim(out)
 
 out$spfile <- basename(tools::file_path_sans_ext(csvfiles))
 names(out)[1] <- "scientificName"
@@ -212,6 +208,13 @@ setDT(out, key = "spfile")
 out <- out[,Nbe_subPop := NULL]
 
 ## Add rows for species with errors
+rdsfiles <- list.files(polygons_dir, pattern = ".rds$",
+                       full.names = TRUE, all.files = TRUE)
+output_sp <- basename(tools::file_path_sans_ext(rdsfiles))
+input_sp <- basename(tools::file_path_sans_ext(spfiles))
+errorsp <- input_sp[!input_sp %in% output_sp]
+errorfiles <- spfiles[!input_sp %in% output_sp]
+
 dat <- do.call("rbind", lapply(errorfiles, readRDS))
 
 temp <- data.frame(matrix(NA, length(errorfiles), dim(out)[2]))
@@ -224,7 +227,7 @@ setDT(temp)
 out <- rbind(out, temp)
 
 ## Save outputs
-setDT(out, key = "spfile")
+setDT(out, key = "spfile"); dim(out)
 write.csv(out, file = file.path(output_dir, "species_EOO_AOO_ahullareas.csv"),
           row.names = FALSE)
 
@@ -269,6 +272,10 @@ write.csv(sort(c(names(na.eooIDX), errorsp)),
 ## Check
 message(cat("Total number of species: "),
         length(c(names(na.eooIDX), errorsp)) + length(temp3))
+
+
+
+
 
 
   # ## Add class/family information to output table

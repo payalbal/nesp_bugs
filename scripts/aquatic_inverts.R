@@ -157,6 +157,10 @@ write.csv(point, file = file.path(output_dir,  "slugrisk", "slug_point_overlap.c
 
 
 ## Polygon overlaps ####
+# job_script <- file.path("/tempdata/workdir/nesp_bugs/", "scripts", "aquatic_inverts_polygon_job.R")
+# rstudioapi::jobRunScript(job_script, encoding = "unknown", workingDir = "/tempdata/workdir/nesp_bugs",
+#                          importEnv = FALSE, exportEnv = "")
+
 shapefile_dir = file.path(output_dir,  "slugrisk", "species_shapefiles")
 if(!dir.exists(shapefile_dir)){dir.create(shapefile_dir)}
 
