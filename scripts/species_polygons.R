@@ -23,6 +23,10 @@ spdata_dir = file.path(output_dir, "ala_nonala_data" ,"spdata")
 polygons_dir = file.path(output_dir,"species_polygons")
 if (!dir.exists(polygons_dir)) {dir.create(polygons_dir)}
 
+# ## Remove existing overlap folder
+# file.remove(file.path(spdata_dir, dir(path = spdata_dir)))
+# unlink(spdata_dir, recursive = TRUE)
+
 working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
 # working_dir <- "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/polygons/"
 
@@ -88,7 +92,7 @@ message(cat("Number of .rds output files created from IUCN.eval(): "),
 
 ## Error runs - I ####
 ## List species not in output files
-errorlog <- file.path(output_dir, "errorlog_species_polygons_corrections_20210617.txt")
+errorlog <- file.path(output_dir, "errorlog_species_polygons_corrections_20210621.txt")
 errorfiles <- trimws(readLines(errorlog)[-1])
 
 ## Error runs - II ####
@@ -109,7 +113,7 @@ message(cat("error species == species not found in rds output files: "),
             %in% input_sp[!input_sp %in% output_sp]))
 
 ## Run IUCN.eval in parallel ####
-mc.cores = future::availableCores()-2
+mc.cores = 7
 set.seed(1, kind = "L'Ecuyer-CMRG")
 system.time(invisible(mclapply(errorfiles,
                                conr_iucn_eval,
@@ -179,6 +183,7 @@ dat <- do.call("rbind", lapply(errorfiles, readRDS))
 wgs_crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 dat.spdf <- sp::SpatialPointsDataFrame(coords = dat[, .(longitude, latitude)],
                                        data = dat, proj4string = CRS(wgs_crs))
+
 plot(basemap, col = "wheat")
 plot(dat.spdf, add = TRUE, pch = 18, cex = 1, col = "tomato3")
 

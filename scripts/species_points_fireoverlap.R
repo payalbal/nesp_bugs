@@ -127,12 +127,11 @@ all(which(is.na(out$Overlap_Points_Fire2345_GEEBAM2_as_burnt)) ==
 naidx <- which(is.na(out$Overlap_Points_Severe_Fire45))
 out[naidx]
   ## 0/0 divisions
+out[naidx]$spfile
 
 
 ## >> Add class/family information to output table ####
-tax <- fread(file = file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"))
-tax <- setDT(tax, key = "spfile")[, .SD[1L] ,.(scientificName, class, order, family, spfile)]
-tax <- tax[,.(scientificName, class, order, family, spfile)]
+tax <- fread(file = file.path(output_dir, "data_ALAnonALA_wgs84_corrected_taxinfo.csv"))
 
 ## Checks
 all(out$spfile %in% tax$spfile)
@@ -141,7 +140,8 @@ dim(tax); length(unique(tax$spfile)); length(unique(tax$scientificName))
 
 out <- merge(out, tax, by = "spfile")
 setDT(out, key = "spfile")
-write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"), row.names = FALSE)
+write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"), 
+          row.names = FALSE)
 
 
 # >> Add order information for species in data from AFD list ####
@@ -173,17 +173,24 @@ for (sp in afd$scientificName){
     out[scientificName == sp]$order = afd[scientificName == sp]$order
   }
 }
+
 sum(is.na(out$class))
 sum(is.na(out$order))
 sum(is.na(out$family))
-unique(out[is.na(out$order)]$data_source)
 
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"), 
           row.names = FALSE)
 
+## Save taxonomic info table
+rm(tax)
+tax <- setDT(out, key = "spfile")[, .SD[1L] ,.(scientificName, class, order, family, spfile)]
+tax <- tax[,.(scientificName, class, order, family, spfile)]
+dim(tax)
+write.csv(tax, file = file.path(output_dir, "data_ALAnonALA_wgs84_corrected_taxinfo.csv"),
+          row.names = FALSE)
 
-## >> Add EOO and AOO information from pecies_EOO_AOO_ahullareas.csv ####
+## >> Add EOO and AOO information from species_EOO_AOO_ahullareas.csv ####
 polyareas <- fread(file.path(output_dir, "species_EOO_AOO_ahullareas.csv"))
 polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, EOO, AOO, Nbe_unique_occ., scientificName)]
 
@@ -256,22 +263,6 @@ out[, Nbe_unique_occ := NULL]
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, "species_points_fireoverlap.csv"),
           row.names = FALSE)
-
-
-## Check against spfile in old output table: invert_fireoverlap_v02.csv
-## To make sure all spfile (as per JM's trait work) are included
-out <- fread(file.path(output_dir, "species_points_fireoverlap.csv"))
-old <- fread(file.path(output_dir, "outputs_noPAA", "invert_fireoverlap_v02.csv"))
-
-all(out$spfile %in% old$spfile)
-all(old$spfile %in% out$spfile)
-  ## not all spfile from old outputs are in the new outputs
-
-sum(!old$spfile %in% out$spfile)
-x <- old[!(old$spfile %in% out$spfile)]$spfile
-y <- fread(file.path(bugs_dir, "data_corrections", "delete_species_fromdata.csv"))$x
-all(x %in% y)
-  ## Telss us that all species from old that are not in the new are the ones that were identified for deletion..
 
 
 ## Summarize outputs ####

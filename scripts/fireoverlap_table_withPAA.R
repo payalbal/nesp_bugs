@@ -46,9 +46,12 @@ setDT(out, key = "spfile")
 
 ## Total records within PAA
 grep("paa", names(out), value = TRUE)
-num <- grep("paa", names(out))
+num <- grep("paa", names(out))[-1]
 out$PAA_Points <- rowSums(out[, ..num])
-nrow(out[PAA_Points == 0])
+message(cat("Number of species with 0 records inside PAA: "),
+        nrow(out[PAA_Points == 0]))
+message(cat("Number of species with at least 1 record inside PAA: "),
+        nrow(out[PAA_Points != 0]))
 
 ## Total number of points overlaping GEEBAM
 grep("_Points$", names(out), value = TRUE)[1:5]
@@ -62,36 +65,72 @@ num <- grep("_Area$", names(out), value = TRUE)[1:5]
 out$Total_fire_polygon <- rowSums(out[, ..num])
 nrow(out[Total_fire_polygon == 0])
 
-## Check if total points in PAA = 0, the fire overlap is also = 0
+
+## Checks ####
+## >> Check if total points in PAA = 0, the fire overlap points = 0 ####
 nrow(out[PAA_Points == 0])
 all(out[PAA_Points == 0]$Total_fire_points == 0)
+  ## All TRUE
 
-## Check if total polygon area in PAA = 0, the fire overlap is also = 0
+
+## >> Check if total points in PAA = 0, then polygon fire overlap = 0 ####
 nrow(out[PAA_Points == 0 & !is.na(Total_fire_polygon)])
 all(out[PAA_Points == 0]$Total_fire_polygon == 0, na.rm = TRUE)
 
+out[PAA_Points == 0 & Total_fire_polygon != 0][,.(spfile, Total_fire_points, Occurrence_Points, Total_fire_polygon, Species_Polygon, EOO, PAA_Points)]
+
+
+## >> Check if total points in PAA = 0, species polygon (raster) is also = 0 ####
+## Species polygon (raster, cipped to PAA) 
+## This can be FALSE because species polygon clipped to PAA may or may not overlap with fire within PAA
 all(out[PAA_Points == 0 & !is.na(Total_fire_polygon)]$Species_Polygon != 0)
 nrow(out[PAA_Points == 0 & Species_Polygon != 0])
 
 out[PAA_Points == 0 & Species_Polygon != 0][,.(spfile, Total_fire_points, Occurrence_Points, Total_fire_polygon, Species_Polygon, EOO, PAA_Points)]
-  ## species polygon does not overlap with fire, but might not be zero because it is within the PAA extent. These aren't a problem. 
 
-## Checks on merged table
+
+## >> Check if polygon fire overlap > species polygon clipped to PAA ####
+## This will always be FALSE
+## Area of polygon fire overlap will always be LESS THAN area of species polygon clipped to PAA
+out[Total_fire_polygon > Species_Polygon][,.(spfile, Total_fire_points, Occurrence_Points, Total_fire_polygon, Species_Polygon, EOO, PAA_Points)]
+
+
+## >> Check if Species_Polygon (raster) > EOO (shapefile) ####
+## Area of species polygon raster clipped to PAA compared to area of species polygon shapefile from ConR
+out[Species_Polygon > EOO][,.(spfile, Total_fire_points, Occurrence_Points, Total_fire_polygon, Species_Polygon, EOO, PAA_Points)]
+  ## Because of decimal values, not useful.
+
+plot(density(out$Species_Polygon/out$EOO, na.rm = TRUE))
+  ## 0 values because Species_Polygons are zero because:
+  ## We see that these species lie on islands that fall off the specified extent of the species rasetr (tif)
+  ## Extent is specified as per the the fire map (see notes in polygon_paa_overlap.R)
+  ## Therefore, the species raster created for these species is all 0 and hence polygon calculatyed for these species = 0
+
+plot(density(out[Species_Polygon > 0, Species_Polygon/EOO], na.rm = TRUE))
+  ## some values > 1
+
+## Check for Species_Polygon/EOO > 1 
+nrow(out[Species_Polygon/EOO > 1])
+out[Species_Polygon/EOO > 1][,.(spfile, Total_fire_points, Occurrence_Points, Total_fire_polygon, Species_Polygon, EOO, PAA_Points)]
+
+
+## >> Checks to test species with and without polygons ####
 sum(is.na(out$Species_Polygon))
 sum(!is.na(out$Species_Polygon))
 
-## Reorder columns
-names(out)[c(1:10, 11:13, 56, 14, 46:50, 52:54, 57, 51, 16, 15, 17:45, 55)]
-out <- out[, c(1:10, 11:13, 56, 14, 46:50, 52:54, 57, 51, 16, 15, 17:45, 55)]
 
-## Save output table
+## Save output table ####
+## Reorder columns
+names(out)[c(1:13, 56, 55, 14, 46:50, 52:54, 57, 51, 16, 15, 17:45)]
+out <- out[, c(1:13, 56, 55, 14, 46:50, 52:54, 57, 51, 16, 15, 17:45)]
+
 setDT(out, key = "spfile")
 write.csv(out, file = file.path(output_dir, paste0("invert_overlap_", Sys.Date(), ".csv")), 
           row.names = FALSE)
 
 
 
-## Combining trait table: Fire_impacted_invert_traits_09.06.csv ####
+## Combine trait table: Fire_impacted_invert_traits_09.06.csv ####
 ## Read in trait table
 trait <- as.data.table(fread(file.path(bugs_dir, "JM_traits", "Fire_impacted_invert_traits_09.06.csv")))
 setDT(trait, key = "spfile")
@@ -196,9 +235,22 @@ write.csv(trait, file = file.path(output_dir,
 ## Check species with Species_Polygon == 0
 message(cat("Number of species off PAA extent (removed from outputs): "),
         nrow(out[PAA_Points == 0]))
-dim(out); out <- out[PAA_Points > 0]; dim(out)
-setDT(out, key = "spfile")
-write.csv(out, file = file.path(output_dir, 
+dim(out); out1 <- out[PAA_Points > 0]; dim(out1)
+setDT(out1, key = "spfile")
+write.csv(out1, file = file.path(output_dir, 
                                 paste0("invert_overlap_PAAonly_", 
                                        Sys.Date(), ".csv")), 
+          row.names = FALSE)
+
+## Table of species removed
+dim(out); out0 <- out[PAA_Points == 0]; dim(out0)
+setDT(out0, key = "spfile")
+write.csv(out0, file = file.path(output_dir, 
+                                paste0("invert_overlap_outsidePAA_", 
+                                       Sys.Date(), ".csv")), 
+          row.names = FALSE)
+
+write.csv(out0$spfile, file = file.path(output_dir, 
+                                 paste0("species_outsidePAA_", 
+                                        Sys.Date(), ".csv")), 
           row.names = FALSE)

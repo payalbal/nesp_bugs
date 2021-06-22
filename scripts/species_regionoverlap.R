@@ -82,7 +82,6 @@ message(cat("Check for NAs: "),
         sum(is.na(out)))
 reg_names <- fread(file.path(output_dir, "bushfire_recregions_names.csv"))
 names(out) <- c("spfile", "NA", gsub(" ", "_", tolower(reg_names$name)))
-setDT(out, key = "spfile")
 
 ## Save output table
 setDT(out, key = "spfile")
@@ -91,8 +90,6 @@ write.csv(out, file = file.path(output_dir, "species_by_bushfireregions.csv"), r
 # ## Remove files ####
 # file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
 # unlink(overlap_dir, recursive = TRUE)
-
-
 
 
 ## II. States overlap ####
@@ -153,7 +150,6 @@ message(cat("Check for NAs: "),
 reg_names <- fread(file.path(output_dir, "state_names.csv"))
 reg_names$name[1] <- "NA"
 names(out) <- c("spfile", reg_names$name)
-setDT(out, key = "spfile")
 
 ## Save output table
 setDT(out, key = "spfile")
@@ -220,7 +216,6 @@ message(cat("Check for NAs: "),
 reg_names <- fread(file.path(output_dir, "state_paa_names.csv"))
 reg_names$name[1] <- "NA"
 names(out) <- c("spfile", reg_names$name)
-setDT(out, key = "spfile")
 
 ## Save output table
 setDT(out, key = "spfile")
@@ -230,4 +225,18 @@ write.csv(out, file = file.path(output_dir, "species_by_states_paa.csv"), row.na
 # file.remove(file.path(overlap_dir, dir(path = overlap_dir)))
 # unlink(overlap_dir, recursive = TRUE)
 
+## List of species in/out of PAA
+out$PAA_Points <- rowSums(out[, 3:ncol(out)])
+message(cat("Number of species with 0 records inside PAA: "),
+        nrow(out[PAA_Points == 0]))
+message(cat("Number of species with at least 1 record inside PAA: "),
+        nrow(out[PAA_Points != 0]))
+
+write.csv(out[PAA_Points == 0]$spfile, 
+          file = file.path(output_dir, "PAA_out_species.csv"),
+          row.names = FALSE)
+
+write.csv(out[PAA_Points > 0]$spfile, 
+          file = file.path(output_dir, "PAA_in_species.csv"),
+          row.names = FALSE)
 

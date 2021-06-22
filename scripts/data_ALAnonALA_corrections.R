@@ -196,8 +196,7 @@ message(cat("Number of species marked as spell_variants but for which name_corre
 temp[!is.na(delete_sp)][, .N, spell_variants]
 temp[!is.na(delete_sp)][, .N, name_corrections]
 
-
-## Correct values for individual species
+## Correct kwonkan_goongarriensis_39854
 grep("kwonkan_goongarriensis_39854", temp$name_corrections)
 temp[grep("kwonkan_goongarriensis_39854", temp$name_corrections)]
 temp[grep("kwonkan_goongarriensis_39854", temp$name_corrections)]$delete_sp = NA
@@ -206,59 +205,11 @@ temp[grep("kwonkan_goongarriensis_39854", temp$name_corrections)]$spell_variants
 grep("kwonkan_goongarriensis_39854", temp$spfile)
 temp[grep("kwonkan_goongarriensis_39854", temp$spfile)]
 
-
-## Assign spell_variants as 1 for all name_corrections found in spfile
-nrow(temp[spell_variants == 1])
-for (i in unique(temp$name_corrections)){
-  temp[spfile == i]$spell_variants = 1
-}
-nrow(temp[spell_variants == 1])
-
-## Update name_corrections for new records found form last step
-nrow(temp[is.na(delete_sp)][!is.na(spell_variants)])
-nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
-temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]
-
-temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]$name_corrections =
-  temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]$spfile
-
-nrow(temp[is.na(delete_sp)][!is.na(spell_variants)])
-nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
-temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]
-
-
-## Final checks
-temp[, .N, delete_sp]
-temp[is.na(delete_sp)][, .N, name_issues]
-temp[is.na(delete_sp)][, .N, spell_variants]
-temp[is.na(delete_sp)][, .N, name_corrections]
-
-nrow(temp[is.na(delete_sp)][!is.na(spell_variants)])
-nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
-
-nrow(temp[is.na(delete_sp)][is.na(spell_variants)][!is.na(name_corrections)])
-nrow(temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)])
-
-temp[!is.na(delete_sp)][, .N, spell_variants]
-temp[!is.na(delete_sp)][, .N, name_corrections]
-
-
-## IV. Add marine species information - part 1####
-sp1 <- fread(file.path(corr_dir, "invert_fireoverlap_JRM_marine.csv"))
-setDT(sp1, key = "spfile")
-sp1[, .N, marine]
-message(cat("All marine species found in data: "),
-        all(temp[spfile %in% sp1[marine == 1]$spfile]$spfile ==
-              sp1[marine == 1]$spfile))
-temp[spfile %in% sp1[marine == 1]$spfile]$marine = 1
-rm(sp1)
-
-
-## V. Add corrections from 13 June 2021 ####
+## Add corrections from 13 June 2021
 s2 <- fread(file.path(corr_dir, "problem_species_jw.csv"))
 s2 <- s2[solution == "combine or ignore?"][,.(spfile, scientificName, Problem)]
 
-## Fixing procambridgea_montana_2461
+## >> Fixing procambridgea_montana_2461
 temp[grep("procambridgea_montana_2461", temp$spfile)][,.(spfile, scientificName, class, order, family)]
 temp[grep("procambridgea_montana_12273", temp$spfile)][,.(spfile, scientificName, class, order, family)]
 temp[grep("procambridgea_montana_12273", temp$spfile)]$family = temp[grep("procambridgea_montana_2461", temp$spfile)]$family
@@ -274,7 +225,7 @@ temp[grep("procambridgea_montana_12273", temp$spfile)]$name_corrections = "proca
 temp[grep("procambridgea_montana_2461", temp$spfile)]
 temp[grep("procambridgea_montana_12273", temp$spfile)]
 
-## Fixing bothriembryon_brazieri_14584
+## >> Fixing bothriembryon_brazieri_14584
 temp[grep("bothriembryon_bothriembryon_brazieri_26446", temp$spfile)][,.(spfile, scientificName, class, order, family)]
 temp[grep("bothriembryon_brazieri_14584", temp$spfile)][,.(spfile, scientificName, class, order, family)]
 temp[grep("bothriembryon_brazieri_14584", temp$spfile)]$family = temp[grep("bothriembryon_bothriembryon_brazieri_26446", temp$spfile)]$family
@@ -291,7 +242,7 @@ temp[grep("bothriembryon_bothriembryon_brazieri_26446", temp$spfile)]
 temp[grep("bothriembryon_brazieri_14584", temp$spfile)]
 
 
-## Fixing sternopriscus_hansardii_13180
+## >> Fixing sternopriscus_hansardii_13180
 temp[grep("sternopriscus_cervus_55009", temp$spfile)][,.(spfile, scientificName, class, order, family, name_issues, delete_sp, spell_variants, name_corrections)]
 temp[grep("sternopriscus_hansardii_13180", temp$spfile)][,.(spfile, scientificName, class, order, family, name_issues, delete_sp, spell_variants, name_corrections)]
 
@@ -303,49 +254,201 @@ temp[grep("sternopriscus_hansardii_13180", temp$spfile)]$name_corrections = "ste
 temp[grep("sternopriscus_cervus_55009", temp$spfile)]
 temp[grep("sternopriscus_hansardii_13180", temp$spfile)]
 
+## >> Correct species name for desnognaphosa_yabbra_15963 > desognaphosa_yabbra_1043
+nrow(temp[grep("desnognaphosa_yabbra_15963", temp$spfile)])
+nrow(temp[grep("desognaphosa_yabbra_1043", temp$spfile)])
+temp[grep("desnognaphosa_yabbra_15963", temp$spfile)]$scientificName
+temp[grep("desognaphosa_yabbra_1043", temp$spfile)]$scientificName
+
+
+temp[grep("desnognaphosa_yabbra_15963", temp$spfile)]$scientificName = "Desognaphosa yabbra"
+temp[grep("Desnognaphosa yabbra", temp$scientificName)]
+temp[grep("Desognaphosa yabbra", temp$scientificName)]$spfile
+
+temp[grep("Desognaphosa yabbra", temp$scientificName)]$spell_variants = 1
+temp[grep("Desognaphosa yabbra", temp$scientificName)]$name_corrections = "desognaphosa_yabbra_1043"
+
+rm(s2)
+
+## Assign spell_variants as 1 for all name_corrections found in spfile
+nrow(temp[spell_variants == 1])
+for (i in unique(temp$name_corrections)){
+  temp[spfile == i]$spell_variants = 1
+}
+nrow(temp[spell_variants == 1])
+rm(i)
+
+## Update name_corrections for new records found form last steps if name_correction = NA
+nrow(temp[is.na(delete_sp)][!is.na(spell_variants)])
+nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
+temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]
+
+temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]$name_corrections =
+  temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]$spfile
+
+nrow(temp[is.na(delete_sp)][!is.na(spell_variants)])
+nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
+temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)]
+
+## Checks
+temp[, .N, delete_sp]
+temp[is.na(delete_sp)][, .N, name_issues]
+temp[is.na(delete_sp)][, .N, spell_variants]
+nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
+
+## Check when name_corrections is unpaired
+x <- temp[is.na(delete_sp)][, .N, name_corrections]
+unique(x$N)
+x[N==1]
+
+temp[grep("tyrannochthonius_butleri", temp$spfile)][,.(spfile, scientificName, class, order, family, name_issues, delete_sp, spell_variants, name_corrections)]
+
+## Corrections
+temp[grep("oratemnus_curtus", temp$spfile)]
+temp[grep("oratemnus_curtus", temp$spfile)]$spfile
+temp[grep("oratemnus_curtus", temp$spfile)]$name_corrections
+temp[grep("oratemnus_curtus", temp$spfile)]$name_corrections <- "oratemnus_curtus_2302"
+
+temp[grep("papilio_princeps_aegeus", temp$spfile)]
+temp[grep("papilio_princeps_aegeus", temp$spfile)]$spfile
+temp[grep("papilio_princeps_aegeus", temp$spfile)][1:2,]$name_corrections
+temp[grep("papilio_princeps_aegeus", temp$spfile)][1:2,]$name_corrections <- "papilio_princeps_aegeus_11465"
+
+temp[grep("pelicinus_sp_01", temp$spfile)]
+temp[grep("pelicinus_sp_1", temp$spfile)][,.(spfile, scientificName, class, order, family, name_issues, delete_sp, spell_variants, name_corrections)]
+temp[grep("pelicinus_sp_01", temp$spfile)]$name_corrections
+temp[grep("pelicinus_sp_1", temp$spfile)][4,]$name_corrections
+temp[grep("pelicinus_sp_1", temp$spfile)][4,]$name_corrections <- "pelicinus_sp_01_2362"
+
+## Checks
+nrow(temp[is.na(delete_sp)][!is.na(spell_variants)])
+nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
+
+nrow(temp[is.na(delete_sp)][is.na(spell_variants)][!is.na(name_corrections)])
+nrow(temp[is.na(delete_sp)][!is.na(spell_variants)][is.na(name_corrections)])
+
+temp[!is.na(delete_sp)][, .N, spell_variants]
+temp[!is.na(delete_sp)][, .N, name_corrections]
+
+temp[, .N, delete_sp]
+temp[is.na(delete_sp)][, .N, name_issues]
+temp[is.na(delete_sp)][, .N, spell_variants]
+nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
+
+rm(x)
+
+
+
+## IV. Add marine species information ####
+temp[, .N, by = "marine"]
+
+sp1 <- fread(file.path(corr_dir, "invert_fireoverlap_JRM_marine.csv"))
+nrow(sp1[marine == 1])
+
+sp2 <- fread(file.path(corr_dir, "invert_fireoverlap_v02_marine_JM.csv"))
+nrow(sp2[Marine == 1])
+
+setDT(sp1, key = "spfile")
+setDT(sp2, key - "spfile")
+
+all(sp1[marine == 1]$spfile %in% sp2[Marine == 1]$spfile)
+  ## because different species in the two lists
+marine_sp <- c(sp1[marine == 1]$spfile, sp2[Marine == 1]$spfile)
+length(marine_sp); sum(duplicated(marine_sp))
+
+message(cat("All marine species found in data: "),
+        all(marine_sp %in% temp$spfile))
+
+temp[spfile %in% marine_sp]$marine = 1
+rm(sp1, sp2, marine_sp)
+
+  # ## >> SKIP these steps to avid problems later. They will be fixed once the whole script is run. 
+  # ## Fix spell_variants and name_corrections columnns for these species
+  # temp[, .N, marine]
+  # temp[marine == 1][, .N, name_issues]
+  # temp[marine == 1][, .N, delete_sp]
+  # temp[marine == 1][, .N, spell_variants]
+  # temp[marine == 1][, .N, name_corrections]
+  # 
+  # temp[marine == 1 & !is.na(delete_sp)]$spfile
+  # temp[marine == 1 & !is.na(delete_sp)][,.(marine, invasive, name_issues, delete_sp, spell_variants, name_corrections)]
+  # 
+  # temp[marine == 1 & !is.na(spell_variants)]$spfile
+  # temp[marine == 1 & !is.na(spell_variants)][,.(spfile, marine, invasive, name_issues, delete_sp, spell_variants, name_corrections)]
+  # 
+  #   ## Look at example
+  #   temp[grep("ammothea_ammothea_australiensis_22357", temp$name_corrections)]
+  # 
+  # x <- temp[marine == 1 & !is.na(spell_variants)]$spfile
+  # temp[name_corrections %in% x][,.(spfile, name_corrections, spell_variants, marine, delete_sp)]
+  # temp[name_corrections %in% x]$spell_variants = NA
+  # temp[name_corrections %in% x]$name_corrections = NA
+  # 
+  # temp[marine == 1 & !is.na(spell_variants)]$name_corrections
+  # temp[marine == 1 & !is.na(spell_variants)]$spell_variants
+  # 
+  # ## Checks
+  # temp[is.na(delete_sp)][, .N, spell_variants]
+  # nrow(temp[is.na(delete_sp)][!is.na(name_corrections)])
+
+
+
+## V. Add exotic species information ####
+temp[, .N, invasive]
+exotic <- fread(file.path(corr_dir, "exotics_JM.csv"))$spfile
+temp[spfile %in% exotic]$invasive = 1
+
+  # ## >> SKIP these steps to avid problems later. They will be fixed once the whole script is run. 
+  # temp[invasive == 1 & !is.na(delete_sp)]$spfile
+  # 
+  # temp[invasive == 1 & !is.na(spell_variants)]$spfile
+  # temp[invasive == 1 & !is.na(spell_variants)][,.(spfile, marine, invasive, name_issues, delete_sp, spell_variants, name_corrections)]
+  # temp[invasive == 1 & !is.na(spell_variants)]$name_corrections = NA
+  # temp[invasive == 1 & !is.na(spell_variants)]$spell_variants = NA
+
+
+
 ## VI. Save table with correctd species information ####
 write.csv(temp, file.path(corr_dir, "invert_fireoverlap_corrected.csv"),
           row.names = FALSE)
 
 
+
 ## VII. Create lists of species to update/remove from data ####
-## >> Species to update in data_ALAnonALA_wgs84.csv ####
-x <- temp[spell_variants == 1]
-length(unique(x$spfile))
-length(unique(x$name_corrections))
-
-x <- x[, .(spfile, scientificName, class, order, family, marine, delete_sp, name_issues, spell_variants, name_corrections)]
-
-## Checks
-unique(x$marine)
-unique(x$delete_sp)
-length(x$spfile) == length(unique(x$spfile))
-
-write.csv(x, file.path(corr_dir, "update_species.csv"), row.names = FALSE)
-rm(x)
-
 ## >> Species to remove from data_ALAnonALA_wgs84.csv ####
-s <- temp[marine == 1 | delete_sp == 1]$spfile
-length(s)
-length(unique(s))
+s1 <- temp[marine == 1 | delete_sp == 1 | invasive == 1]$spfile
+length(s1)
+length(unique(s1))
 
-## Exotic & marine species
-exotic <- fread(file.path(corr_dir, "exotics_JM.csv"))$spfile
-marine <- fread(file.path(corr_dir, "invert_fireoverlap_v02_marine_JM.csv"))
-marine <- marine[, .(spfile, Marine)][Marine == 1]$spfile
-
-## Additional deleteions: 13 June 2021
+## Additional deletions: 13 June 2021
 s2 <- fread(file.path(corr_dir, "problem_species_jw.csv"))
 s2 <- s2[solution == "DELETE"]$spfile
 
 ## Combine lists
-s <- c(s,exotic,marine, s2)
+s <- c(s1,s2)
 sum(duplicated(s))
 
 write.csv(s, file.path(corr_dir, "delete_species_fromdata.csv"),
           row.names = FALSE)
 
-rm(s, exotic, marine, s2)
+rm(s1, s2)
+
+## >> Species to update in data_ALAnonALA_wgs84.csv ####
+x <- temp[spell_variants == 1]
+length(unique(x$spfile))
+length(x$name_corrections)
+length(unique(x$name_corrections))
+
+x <- x[, .(spfile, scientificName, class, order, family, marine, delete_sp, name_issues, spell_variants, name_corrections)]
+
+## Checks
+unique(x$delete_sp)
+length(x$spfile) == length(unique(x$spfile))
+
+write.csv(x, file.path(corr_dir, "update_species.csv"), row.names = FALSE)
+rm(s, x)
+rm(temp1)
+
 ## ---------------------------------------------------
 
 
@@ -357,13 +460,14 @@ data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84.csv"))
 
 ## >> Correct data_ALAnonALA_wgs84.csv with updated species names ####
   # temp <- fread(file.path(corr_dir, "invert_fireoverlap_corrected.csv"))
-new_sp <- fread(file.path(corr_dir, "update_species.csv"))
+update_sp <- fread(file.path(corr_dir, "update_species.csv"))
 
 length(new_sp$spfile)
 length(unique(new_sp$name_corrections))
 
 ## Check all species are found in data
-all(sort(unique(data[spfile %in% new_sp$spfile]$spfile)) == sort(new_sp$spfile))
+all(new_sp$spfile %in% unique(data$spfile))
+all(new_sp$name_corrections %in% unique(data$spfile))
 
 ## Change spfile in data according to name_corrections in new_sp
 for (i in unique(new_sp$name_corrections)){
@@ -381,15 +485,19 @@ for (i in unique(new_sp$name_corrections)){
 
 ## Check 
 length(unique(data[spfile %in% new_sp$spfile]$spfile)) == length(unique(new_sp$name_corrections))
+
 all(sort(length(unique(data[spfile %in% new_sp$spfile]$spfile))) == sort(length(unique(new_sp$name_corrections))))
+
 length(unique(data[!duplicated(data[, .(spfile, class, order, family)])][spfile %in% new_sp$spfile]$spfile)) == length(unique(new_sp$name_corrections))
+
 nrow(data[!duplicated(data[, .(spfile, class, order, family)])]) == length(unique(data$spfile))
 
 rm(new_sp, i)
 
 ## >> Remove species from data_ALAnonALA_wgs84.csv ####
+## This is done AFTER updates because some species were marked as spell_varinats and name_corrections, 
+## to delete all related species, we have to first update spfile and then remove them from the dataset.
 delete_sp <- fread(file.path(corr_dir, "delete_species_fromdata.csv"))$x
-
 length(delete_sp)
 
 length(unique(data$spfile)) - length(delete_sp)
@@ -398,12 +506,6 @@ length(unique(data[!spfile %in% delete_sp]$spfile))
 dim(data); data <- data[!spfile %in% delete_sp]; dim(data)
 
 rm(delete_sp)
-
-## Correct species name for desnognaphosa_yabbra_15963 > desognaphosa_yabbra_1043
-data[grep("desnognaphosa_yabbra_15963", data$spfile)]$spfile = "desognaphosa_yabbra_15963"
-data[grep("desnognaphosa_yabbra_15963", data$spfile)]$scientificName = "Desognaphosa yabbra"
-data[grep("desognaphosa_yabbra_15963", data$spfile)]
-data[grep("Desognaphosa yabbra", data$scientificName)]$spfile = "desognaphosa_yabbra_1043"
 
 ## >> Remove duplicates ####
 ## Same number by scientificName and spfile
@@ -463,17 +565,19 @@ message(cat("Total number of records in updated data: "),
 # Total number of records in updated data: 343093
 
 x <- data[, .N, by = "spfile"]; dim(x)
-message(cat("Number of species with 1 -2 records: "),
+message(cat("Number of species with 1-2 records: "),
         nrow(x[N <= 2]))
 message(cat("Number of species with > 2 records: "),
         nrow(x[N > 2]))
-
+rm(x)
 
 
 ## >> Taxonomic information table ####
 tax <- setDT(data, key = "spfile")[, .SD[1L] ,.(scientificName, class, order, family, spfile)]
+tax <- tax[,.(scientificName, class, order, family, spfile)]
 dim(tax)
-write.csv(tax, file = file.path(output_dir, "data_ALAnonALA_wgs84_corrected_taxinfo.csv"))
+write.csv(tax, file = file.path(output_dir, "data_ALAnonALA_wgs84_corrected_taxinfo.csv"),
+          row.names = FALSE)
 
 
 
@@ -525,11 +629,3 @@ system.time(invisible(future.apply::future_lapply(all_species,
 length(list.files(spdata_dir, pattern = ".rds$"))
 length(all_species)
 rm(dat, save_spdata2)
-
-
-x <- "desognaphosa_yabbra_15963"
-y <- "desognaphosa_yabbra_1043"
-
-file.remove("/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/ala_nonala_data/spdata/desognaphosa_yabbra_15963.rds")
-file.remove("/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/ala_nonala_data/spdata/desognaphosa_yabbra_1043.rds")
-

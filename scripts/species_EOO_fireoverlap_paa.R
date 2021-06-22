@@ -30,6 +30,11 @@ if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 ## Load spdf data for species with EOO ####
 species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
+length(polygon_list)
+
+# ## To only run it for species with > 0 points in PAA
+# paa_species <- fread(file.path(output_dir, "PAA_in_species.csv"))$x
+# polygon_list <- polygon_list[polygon_list %in% paa_species]
 
 
 ## Run overlap analysis in parallel: doMC ####

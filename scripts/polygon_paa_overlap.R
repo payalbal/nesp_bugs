@@ -6,7 +6,7 @@ polygon_paa_overlap <- function(species_name, species_poly, shapefile_dir, fire_
   ## Write spatial data to disk if coming from RDS file
   writeOGR(species_poly, dsn = shapefile_dir, layer = species_name, driver = "ESRI Shapefile", overwrite_layer = TRUE)
   
-  ## Reproject species boundaries to match fire severity raster
+  ## Reproject species polygon to match fire severity raster
   system(paste0("gdal_rasterize -at -burn 1 -ot Byte -tr .0025 .0025 -l ",
                 species_name, " ",
                 file.path(shapefile_dir, species_name), ".shp ",
@@ -19,9 +19,7 @@ polygon_paa_overlap <- function(species_name, species_poly, shapefile_dir, fire_
                 " -s_srs 'EPSG:4326' -t_srs '", fire_crs, "' ",
                 file.path(shapefile_dir, species_name), ".tif ",
                 file.path(shapefile_dir, species_name), "_p.tif"))
-  ## extent clips out islands, but we need to do this because fire map has this extent
-  
-  
+
   ## Create table of areas within each fire class
   species_map <- raster(paste0(file.path(shapefile_dir, species_name), "_p.tif"))
   

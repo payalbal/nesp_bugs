@@ -16,10 +16,14 @@
 # delete: "exoneura_exoneura_35797", 
 #         "idiosoma_longipes_16812", 
 #         "penilia_avirostris_48569", 
-#         "philanisus_plebeius_49004"
+#         "philanisus_plebeius_49004", 
+#         "procambridgea_montana_12273",
+#         "bothriembryon_bothriembryon_brazieri_26446",
+#         "sternopriscus_cervus_55009",
+#         "desnognaphosa_yabbra_15963"
 
           
-          
+           
 ## Set working environment ####
 rm(list = ls())
 gc()
@@ -61,7 +65,8 @@ working_dir <- paste0("~/gsdms_r_vol", polygons_dir)
 data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"))
 
 new_sp <- c("procambridgea_montana_2461", "bothriembryon_brazieri_14584",
-            "sternopriscus_hansardii_13180", "desnognaphosa_yabbra_15963")
+            "sternopriscus_hansardii_13180", "desnognaphosa_yabbra_15963",
+            "desnognaphosa_yabbra_15963")
 
 delete_sp <- c("exoneura_exoneura_35797", 
                  "idiosoma_longipes_16812", 
@@ -70,7 +75,8 @@ delete_sp <- c("exoneura_exoneura_35797",
                  "procambridgea_montana_12273",
                  "bothriembryon_bothriembryon_brazieri_26446",
                  "sternopriscus_cervus_55009",
-                 "desnognaphosa_yabbra_15963")
+                 "desnognaphosa_yabbra_15963", 
+                  "desnognaphosa_yabbra_15963")
 
 dim(data)
 data <- data[spfile %in% new_sp]
