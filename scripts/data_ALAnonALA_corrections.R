@@ -580,6 +580,70 @@ write.csv(tax, file = file.path(output_dir, "data_ALAnonALA_wgs84_corrected_taxi
           row.names = FALSE)
 
 
+## Data summary ####
+data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"))
+
+
+## >> Summarize data by species and data source - I
+sources <- fread(file.path(output_dir, "data_sources.csv")) ## file created manually based on unique data_source in data
+unique(sources$description)
+sources[, `original file` := NULL]
+
+out <- data[, .N, by = data_source]
+out$data_source
+
+out <- merge(out, sources, by = "data_source")
+
+out[, data_source := NULL]
+out <- out[,c(3,2,1)]
+
+out <- out[, .(N=sum(N)), by=description]
+out <- out[order(-N)]
+write.csv(out, file = file.path(output_dir, "data_bysources.csv"),
+          row.names = FALSE)
+
+## >> Summarize data by species and data source [SIMPLIFIED] - II
+sources <- fread(file.path(output_dir, "data_sources.csv"))
+out <- data[, .N, by = data_source]
+
+out$data_type <- rep(character(), nrow(out))
+out[data_source %in% sources[type == "state"]$data_source]$data_type = "state"
+out[data_source %in% sources[type == "museum"]$data_source]$data_type = "museum"
+out[data_source %in% sources[type == "ala"]$data_source]$data_type = "ala"
+out[data_source %in% sources[type == "private"]$data_source]$data_type = "private"
+
+out[, .(N=sum(N)), by=data_type]
+
+## >> Summarize data by mnumber of species, class, family, order
+length(unique(data$spfile))
+length(unique(data$class))
+
+classtab <- data[, .N, class]
+classtab <- classtab[order(-N)]
+write.csv(classtab, file = file.path(output_dir, "data_byclass.csv"),
+          row.names = FALSE)
+
+length(unique(data$family))
+
+## >> Summarize data by number of records for species
+counts <- data[, .N, spfile]
+
+count1 <- counts[which(counts$N == 1)]
+message(cat("Number of species with 1 record in cleaned ALA data: "),
+        nrow(count1))
+
+countLTE20 <- counts[which(counts$N > 1 & counts$N <= 20) , ]
+message(cat("Number of species with more than 1 and less than or equal to 20 records in cleaned ALA data: "),
+        nrow(countLTE20))
+
+countMT20 <- counts[which(counts$N > 20)]
+message(cat("Number of species with more than 20 records in cleaned ALA data: "),
+        nrow(countMT20))
+
+plot(density(counts$N))
+plot(density(counts[N > 20 & N < 200, N]))
+
+
 
 ## Save rds files for species ####
 ## ---------------------------------------------------

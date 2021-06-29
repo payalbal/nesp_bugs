@@ -30,17 +30,20 @@ if(!dir.exists(overlap_dir)){dir.create(overlap_dir)}
 ## Load spdf data for species with EOO ####
 species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
-length(polygon_list)
+message(cat("Number of species with polygons: "),
+        length(polygon_list))
 
-# ## To only run it for species with > 0 points in PAA
+# ## To only run overlaps for species with > 0 points in PAA
 # paa_species <- fread(file.path(output_dir, "PAA_in_species.csv"))$x
 # polygon_list <- polygon_list[polygon_list %in% paa_species]
-
+# message(cat("Number of species with polygons and > 0 points in PAA: "),
+#         length(polygon_list))
 
 ## Run overlap analysis in parallel: doMC ####
-## 'log' only useful when running small number of species
-job_script <- file.path("/tempdata/workdir/nesp_bugs/", "scripts", "species_EOO_fireoverlap_paa_job.R")
-rstudioapi::jobRunScript(job_script, encoding = "unknown", workingDir = "/tempdata/workdir/nesp_bugs",
+job_script <- file.path("/tempdata/workdir/nesp_bugs/", 
+                        "scripts", "species_EOO_fireoverlap_paa_job.R")
+rstudioapi::jobRunScript(job_script, encoding = "unknown", 
+                         workingDir = "/tempdata/workdir/nesp_bugs",
                          importEnv = FALSE, exportEnv = "")
 
 
@@ -113,12 +116,12 @@ writeOGR(species_poly, dsn = shapefile_dir, layer = species_name, driver = "ESRI
 
 ## >> Get list of species names with Species_Polygon == 0
 x <- out[naidx]$spfile
-write.csv(x, file.path(output_dir, "species_offextent_offPAA.csv"), row.names = FALSE)
+write.csv(x, file.path(output_dir, "species_offextent.csv"), row.names = FALSE)
 
-## Remove species with Species_Polygon == 0
-message(cat("Number of species off PAA extent (removed from outputs): "),
-        length(x))
-out[(spfile %in% x)]
+# ## Remove species with Species_Polygon == 0
+# message(cat("Number of species off PAA extent (removed from outputs): "),
+#         length(x))
+# out[(spfile %in% x)]
 # dim(out); out <- out[!(spfile %in% x)]; dim(out)
 
 
@@ -163,27 +166,6 @@ message(cat("NA in scientificName: "),
 message(cat("Total number of species: "),
         nrow(out))
 
-message(cat("# Species showing 100% fire overlap: "),
-        nrow(out[Percent_Overlap == 100]));
-nrow(out[Percent_Overlap == 100])/nrow(out)
-message(cat("# Species showing 100% fire overlap: "))
-print(setorder(out[Percent_Overlap == 100][, .(class,family, scientificName)], class, family, scientificName))
 
-message(cat("# Species showing >= 90% fire overlap: "),
-        nrow(out[Percent_Overlap >= 90]));
-nrow(out[Percent_Overlap >= 90])/nrow(out)
 
-message(cat("# Species showing >= 50% fire overlap: "),
-        nrow(out[Percent_Overlap >= 50]));
-round(nrow(out[Percent_Overlap >= 50])/nrow(out), 2)
 
-message(cat("# Species showing no fire overlap: "),
-        nrow(out[Percent_Overlap == 0]))
-round(nrow(out[Percent_Overlap == 0])/nrow(out), 2)
-
-## High severity overlaps
-fire3_overlap <- out$Fire_Class_3/out$Species_Polygon
-message(cat("Number of species with high fire severity impact on > = 50% of their range: "),
-        length(which(fire3_overlap >= 0.5)))
-message(cat("Species with high fire severity impact on > = 50% of their range: "))
-out[which(fire3_overlap >= 0.5)]$scientificName

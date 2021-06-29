@@ -26,6 +26,7 @@ if(!dir.exists(file.path(bugs_dir, "outputs", "native_vegetation"))){
 
 ## Load mask
 ausmask <- raster(file.path(output_dir, "masks", "ausmask_noaa_250mAlbersEA_NA.tif"))
+aus.extent <- extent(ausmask)
 aus.crs <- crs(ausmask)
 aus.res <- res(ausmask)
 
@@ -57,7 +58,7 @@ system(paste0("gdal_calc.py -A ", infile,
               " --outfile=", outfile))
 gdalUtils::gdalinfo(outfile)
 
-raster(outfile)
+temp <- raster(outfile)
 sort(unique(na.omit(temp)))
 
 ## Reproject according to Australia mask
@@ -66,15 +67,15 @@ infile <- outfile
 outfile <- gsub(".tif", "_reclass.tif", infile)
 
 system(paste0("gdalwarp -overwrite -ot Byte -tr ", 
-              paste(aus.res, collapse = " "),
+              paste(aus.res, collapse = " "), " -te ", 
+              paste(aus.extent[1], aus.extent[3], 
+                    aus.extent[2], aus.extent[4]), 
               " -t_srs '", aus.crs, "' ",
               infile, " ", outfile))
 gdalUtils::gdalinfo(outfile)
 
-raster(outfile)
+temp <- raster(outfile)
 sort(unique(na.omit(temp)))
-
-nvis.extent <- extent(raster(outfile))
 
 
 
@@ -88,20 +89,20 @@ outfile <- file.path(output_dir, "fire", "severity5_eqar250.tif")
 gdalUtils::gdalinfo(infile)
 system(paste0("gdalwarp -overwrite -ot Byte -tr ", 
               paste(aus.res, collapse = " "), " -te ", 
-              paste(nvis.extent[1], nvis.extent[3], 
-                    nvis.extent[2], nvis.extent[4]), 
+              paste(aus.extent[1], aus.extent[3], 
+                    aus.extent[2], aus.extent[4]), 
               " -t_srs '", aus.crs, "' ",
               infile, " ", outfile))
 gdalUtils::gdalinfo(outfile)
 raster(outfile)
 
-# # Reclassify values in raster
-# infile <- outfile
-# outfile <- file.path(output_dir, "fire", "severity3_eqar250.tif")
-# system(paste0("gdal_calc.py -A ", infile,
-#               " --calc='(A==1)*1 + ((A==2)+(A==3))*2 + ((A==4)+(A==5))*3' --NoDataValue=0",
-#               " --outfile=", outfile))
-# gdalUtils::gdalinfo(outfile)
+  # # Reclassify values in raster
+  # infile <- outfile
+  # outfile <- file.path(output_dir, "fire", "severity3_eqar250.tif")
+  # system(paste0("gdal_calc.py -A ", infile,
+  #               " --calc='(A==1)*1 + ((A==2)+(A==3))*2 + ((A==4)+(A==5))*3' --NoDataValue=0",
+  #               " --outfile=", outfile))
+  # gdalUtils::gdalinfo(outfile)
 
 ## Clip fire severity raster with reclassified NVIS layer (i.e. native vegetation only)
 ## >>>>> TAKE NOTE: Modify gdal_calc.R <<<<<
@@ -124,8 +125,8 @@ outfile <- gsub(".tif", "_paa.tif", infile)
 paa_file <- file.path(output_dir, "fire", "prelim_analysis_areas_dissolve_eqar.shp") 
 
 system(paste0("gdalwarp -overwrite ", "-te ", 
-              paste(nvis.extent[1], nvis.extent[3], 
-                    nvis.extent[2], nvis.extent[4]), 
+              paste(aus.extent[1], aus.extent[3], 
+                    aus.extent[2], aus.extent[4]), 
               " -of GTiff -cutline ", paa_file, 
               " -cl prelim_analysis_areas_dissolve_eqar ",
               infile, " ", outfile))
@@ -144,7 +145,7 @@ sort(unique(raster(outfile)[]))
 ## >>>> GEEBAM fire severity 5 class into 1/0 raster
 infile <- file.path(output_dir, "fire", "severity5_eqar250.tif")
 outfile <- file.path(output_dir, "fire", "severity1_eqar250.tif")
-# gdalUtils::gdalinfo(file.path(bugs_dir, "fire/AUS_GEEBAM_Fire_Severity_NIAFED20200224_QGIS/AUS_GEEBAM_Fire_Severity_QGIS_NIAFED20200224.tif"))
+  # gdalUtils::gdalinfo(file.path(bugs_dir, "fire/AUS_GEEBAM_Fire_Severity_NIAFED20200224_QGIS/AUS_GEEBAM_Fire_Severity_QGIS_NIAFED20200224.tif"))
 system(paste0("gdal_calc.py -A ", infile,
               " --calc='((A==1) + (A==2) + (A==3) + (A==4) + (A==5))*1' --NoDataValue=0",
               " --outfile=", outfile))
@@ -155,14 +156,14 @@ sort(unique(raster(outfile)[]))
 infile <- outfile
 outfile <- gsub(".tif",".shp", infile)
 system(paste0("gdal_polygonize.py ", infile, " ", outfile, " -f 'ESRI Shapefile'"))
-## check values in QGIS
+  ## check values in QGIS
 
 ## >>> Dissolve
 infile <- outfile
 outfile <- gsub(".shp","_dissolve.shp", infile)
 system(paste0("ogr2ogr ", outfile, " ", infile, " -dialect sqlite -sql 'SELECT ST_Union(geometry), DN FROM severity1_eqar250 GROUP BY DN'"))
-# ## Can also be written as this because there is only one value in the attribute table:
-# system(paste0("ogr2ogr ", outfile, " ", infile, " -dialect sqlite -sql 'SELECT ST_Union(geometry) AS geometry FROM severity1_eqar250'"))
+  # ## Can also be written as this because there is only one value in the attribute table:
+  # system(paste0("ogr2ogr ", outfile, " ", infile, " -dialect sqlite -sql 'SELECT ST_Union(geometry) AS geometry FROM severity1_eqar250'"))
 
 ## Fire extent data: NIAFED
 ## Source http://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D

@@ -15,12 +15,12 @@ output_dir = file.path(bugs_dir, "outputs")
 
 
 ## Subset data ####
-aqualist <- fread(file.path(aqua_dir, "aquatic.csv"))
-aqualist <- aqualist$spfile
-aqualist <- aqualist[!duplicated(aqualist)]
+aqualist <- fread(file.path(aqua_dir, "Aquatic_species.csv"))
+aqualist <- aqualist[spfile != ""]
+aqualist <- aqualist[-98,]
 
 data <- fread(file.path(output_dir, "data_ALAnonALA_wgs84_corrected.csv"))
-aqua_data <- data[spfile %in% aqualist]
+aqua_data <- data[spfile %in% aqualist$spfile]
 
 ## Polygon overlaps
 shapefile_dir = file.path(output_dir,  "slugrisk", "species_shapefiles")
@@ -34,7 +34,7 @@ source("/tempdata/workdir/nesp_bugs/scripts/polygon_slugfire_overlap.R")
 ## >> Load in spdf data for species with EOO ####
 species_maps <- readRDS(file.path(output_dir, "species_ahullEOOspdf.rds"))
 polygon_list <- names(species_maps)
-polygon_list <- polygon_list[polygon_list %in% aqualist]
+polygon_list <- polygon_list[polygon_list %in% aqualist$spfile]
 
 csvfiles <- list.files(overlap_dir, pattern = ".csv$",
                        full.names = TRUE, all.files = TRUE)
@@ -56,7 +56,7 @@ slug_classes <- sort(unique(na.omit(slug_vals)))
 
 ## >> Run overlap analysis in parallel: doMC ####
 ## 'log' only useful when running small number of species
-registerDoMC(length(polygon_list))
+registerDoMC(future::availableCores()-1)
 system.time(log <- foreach(polys = polygon_list,
                            .combine = rbind,
                            .errorhandling = "pass",

@@ -13,13 +13,12 @@ rm(x)
 ## File paths and folders
 bugs_dir = "~/gsdms_r_vol/tempdata/research-cifs/uom_data/nesp_bugs_data"
 output_dir = file.path(bugs_dir, "outputs")
-corr_dir <- file.path(bugs_dir, "data_corrections")
-
-poly <- fread(file.path(output_dir, "species_polygon_fireoverlap.csv")); dim(poly)
-point <- fread(file.path(output_dir, "species_points_fireoverlap.csv")); dim(point)
 
 
 ## Combine output tables ####
+poly <- fread(file.path(output_dir, "species_polygon_fireoverlap.csv")); dim(poly)
+point <- fread(file.path(output_dir, "species_points_fireoverlap.csv")); dim(point)
+
 ## Merge rows for species with polygon overlap innfo (n = 29029)
 out1 <- merge(point, poly, by = "spfile")
 dim(out1)
@@ -106,8 +105,10 @@ plot(density(out$Species_Polygon/out$EOO, na.rm = TRUE))
   ## Extent is specified as per the the fire map (see notes in polygon_paa_overlap.R)
   ## Therefore, the species raster created for these species is all 0 and hence polygon calculatyed for these species = 0
 
+range(out[Species_Polygon > 0, Species_Polygon/EOO])
 plot(density(out[Species_Polygon > 0, Species_Polygon/EOO], na.rm = TRUE))
   ## some values > 1
+  ## This might be a problem because of species raster (Species_Polygon) ...
 
 ## Check for Species_Polygon/EOO > 1 
 nrow(out[Species_Polygon/EOO > 1])
@@ -130,14 +131,79 @@ write.csv(out, file = file.path(output_dir, paste0("invert_overlap_", Sys.Date()
 
 
 
+## Add JW's columns ####
+tab <- fread(file.path(bugs_dir, "table_components", "invert_overlap_PAAonly_2021-06-11_jw2.csv"))
+tab <- tab[,.(spfile, `preliminary priority sp.`, threatened)]
+setDT(tab, key = "spfile")
+
+## >> Find species not found in outputs
+all(tab$spfile %in% out$spfile)
+sum(!tab$spfile %in% out$spfile)
+tab$spfile[which(!tab$spfile %in% out$spfile)]
+
+delete_sp <- fread(file.path(bugs_dir, "data_corrections", "delete_species_fromdata.csv"))
+tab$spfile[which(!tab$spfile %in% out$spfile)][tab$spfile[which(!tab$spfile %in% out$spfile)] %in% delete_sp$x]
+  ## Species were either deleted or iupdated
+  ## See nesp_bugs_data/table_components/old_new_comparison1.xlsx
+
+## >> Subset to species found in outputs
+tab <- tab[spfile %in% out$spfile]
+
+## >> Combine output tables
+## Merge rows for species with polygon overlap innfo (n = 29029)
+out1 <- merge(out, tab, by = "spfile")
+dim(out1)
+
+## Get rows for species without polygon informatiom (n = 29948)
+sum(!(out$spfile %in% out1$spfile))
+out2 <- out[!(out$spfile %in% out1$spfile)]
+dim(out2)
+
+## Add empty polygon information columns to out2 
+dt <- setNames(data.table(matrix(nrow = nrow(out2), ncol = length(names(tab)[-1]))), names(tab)[-1])
+out2 <- cbind(out2, dt)
+dim(out2)
+rm(dt)
+
+## Check
+dim(out1)[1] + dim(out2)[1] == dim(out)[1]
+ncol(out1) == ncol(out2)
+
+## Combine both tables
+out <- rbind(out1, out2); dim(out)
+rm(out1, out2, tab)
+setDT(out, key = "spfile")
+write.csv(out, file = file.path(output_dir, paste0("invert_overlap_", Sys.Date(), ".csv")), 
+          row.names = FALSE)
+## invert_overlap_2021-06-24.csv
+
+
+## Save table truncated to species with > 0 records in PAA ####
+## Check species with Species_Polygon == 0
+message(cat("Number of species with 0 points inside PAA: "),
+        nrow(out[PAA_Points == 0]))
+dim(out); out1 <- out[PAA_Points > 0]; dim(out1)
+setDT(out1, key = "spfile")
+write.csv(out1, file = file.path(output_dir, 
+                                 paste0("invert_overlap_PAAonly_", 
+                                        Sys.Date(), ".csv")), 
+          row.names = FALSE)
+## invert_overlap_PAAonly_2021-06-24.csv
+
+
+
 ## Combine trait table: Fire_impacted_invert_traits_09.06.csv ####
 ## Read in trait table
-trait <- as.data.table(fread(file.path(bugs_dir, "JM_traits", "Fire_impacted_invert_traits_09.06.csv")))
+trait <- as.data.table(fread(file.path(bugs_dir, "JM_traits", "Trait_RAWdata.csv")))
 setDT(trait, key = "spfile")
+
+# out <- fread(file.path(output_dir, "invert_overlap_2021-06-24.csv"))
 
 ## Move spfile column to the front
 grep("spfile", names(trait))
-trait <- trait[, c(8, 1:7, 9:173)]
+# x <- grep("spfile", names(trait))
+# idx <- c(11, 1:(x-1), (x+1):ncol(trait)) ## doesn't work
+trait <- trait[, c(11, 1:10, 12:186)]
 
 ## Check duplicates in spfile
 trait_sp <- unique(trait$spfile)
@@ -158,9 +224,7 @@ trait[grep("#N/A", trait$spfile)]$scientificName %in% out$scientificName
 ## Check duplicates in scientificName
 length(unique(trait$scientificName))
 sum(duplicated(trait$scientificName))
-trait[duplicated(trait$scientificName)]$scientificName
-trait[scientificName == trait[duplicated(trait$scientificName)]$scientificName]$spfile
-  ## can be ignored as spfile is different
+# trait[duplicated(trait$scientificName)]$scientificName
 
 ## Check spfile not found
 length(trait_sp)
@@ -212,6 +276,7 @@ write.csv(trait, file = file.path(output_dir,
                                 paste0("invert_overlap_traits_", 
                                        Sys.Date(), ".csv")), 
           row.names = FALSE)
+## invert_overlap_traits_2021-06-24.csv
 
   # ## Checks
   # names(out)[grep("_OLD|_NEW", names(out))]
@@ -231,26 +296,97 @@ write.csv(trait, file = file.path(output_dir,
   # x <- out[!duplicated(data[,.(spfile, scientificName, class, order, family)])][, .(spfile, scientificName, class, order, family)]
 
 
-## Save table truncated to species with > 0 records in PAA ####
-## Check species with Species_Polygon == 0
-message(cat("Number of species off PAA extent (removed from outputs): "),
-        nrow(out[PAA_Points == 0]))
-dim(out); out1 <- out[PAA_Points > 0]; dim(out1)
-setDT(out1, key = "spfile")
-write.csv(out1, file = file.path(output_dir, 
-                                paste0("invert_overlap_PAAonly_", 
-                                       Sys.Date(), ".csv")), 
+## Compare inclusion_set species in invert_overlap_PAAonly_2021-06-24_jw.xlsx to 1077 species in Trait_RAWdata.csv
+jw_tab <- fread(file.path(bugs_dir, "table_components", "invert_overlap_PAAonly_2021-06-24_jw.csv"))
+jw_tab <- jw_tab[,.(spfile, scientificName, inclusion_set)]
+sum(is.na(jw_tab$spfile))
+sum(is.na(jw_tab$scientificName))
+sum(is.na(jw_tab$inclusion_set))
+unique(jw_tab$inclusion_set)
+jw_tab[, .N, inclusion_set]
+jw_tab <- jw_tab[inclusion_set != ""]
+
+trait_sp <- fread(file.path(output_dir, "invert_overlap_traits_2021-06-24.csv"))$spfile
+length(unique(trait_sp)) 
+trait_sp <- trait_sp[trait_sp !="#N/A"] ## removing the NA species (see notes above)
+
+insp <- jw_tab$spfile[jw_tab$spfile %in% trait_sp]
+outsp <- jw_tab$spfile[!jw_tab$spfile %in% trait_sp]
+length(insp)+length(outsp) == length(jw_tab$spfile)
+
+write.csv(insp, file = file.path(output_dir, "SAMEsp_JW_inclusionset_Trait_RAWdata.csv"),
+          row.names = FALSE)
+write.csv(outsp, file = file.path(output_dir, "NEWsp_JW_inclusionset_Trait_RAWdata.csv"),
           row.names = FALSE)
 
-## Table of species removed
-dim(out); out0 <- out[PAA_Points == 0]; dim(out0)
-setDT(out0, key = "spfile")
-write.csv(out0, file = file.path(output_dir, 
-                                paste0("invert_overlap_outsidePAA_", 
-                                       Sys.Date(), ".csv")), 
-          row.names = FALSE)
 
-write.csv(out0$spfile, file = file.path(output_dir, 
-                                 paste0("species_outsidePAA_", 
-                                        Sys.Date(), ".csv")), 
+
+## Stichinng sheets: Traits_master copy.xlsx & invert_overlap_PAAonly_2021-06-24_jw.csv ####
+traits <- fread(file.path(bugs_dir, "JM_traits", "Traits_master_copy.csv"))
+overlap <- fread(file.path(bugs_dir, "table_components", "invert_overlap_PAAonly_2021-06-24_jw.csv"))
+columns <- fread(file.path(bugs_dir, "table_components", "ColumnsStitch_v2_TraitedSpp.csv"))
+columns[, Sheet := NULL]
+
+## Checks 
+## #VALUE! in overlap read in as NaN 
+## data.table treats is.na and is.nan similarly
+## https://www.r-bloggers.com/2012/08/difference-between-na-and-nan-in-r/
+sum(!is.nan(overlap$avge_severe_pts_polygons))
+sum(!is.na(overlap$avge_severe_pts_polygons))
+
+dim(traits)
+dim(overlap)
+
+names(traits)
+names(overlap)
+
+## Get column names for each sheet
+overlap_cols <- columns[File == "invert_overlap_PAAonly_2021-06-24_jw"]$Columns
+overlap_cols <- c("spfile", "PAA_Points", "Species_Polygon", overlap_cols); length(overlap_cols)
+overlap_cols <- overlap_cols[c(1,4,5,7,8,9,10,6,2,11:12,3,13:43)]; length(overlap_cols)
+
+traits_cols <- columns[File == "Traits_master copy"]$Columns
+traits_cols <- c("spfile", "scientificName", "order", "family", traits_cols); length(traits_cols)
+
+## Subset sheets by column names
+dim(overlap); overlap <- overlap[,..overlap_cols]; dim(overlap)
+dim(traits); traits <- traits[,..traits_cols]; dim(traits)
+
+## Tables for spfile in and out of overlap table
+setDT(overlap, key = "spfile")
+setDT(traits, key = "spfile")
+
+all(traits$spfile %in% overlap$spfile)
+sum(traits$spfile %in% overlap$spfile)
+sum(!traits$spfile %in% overlap$spfile)
+traits$spfile[which(!traits$spfile %in% overlap$spfile)]
+
+traits1 <- merge(traits, overlap, by = "spfile"); dim(traits1)
+traits2 <- traits[grep("#N/A", traits$spfile)]; dim(traits2)
+
+## Add empty columns to trait2
+dt <- setNames(data.table(matrix(nrow = nrow(traits2), 
+                                 ncol = sum(!names(traits1)%in% names(traits2)))), 
+               names(traits1)[!names(traits1)%in% names(traits2)]); dim(dt)
+names(dt)
+traits2 <- cbind(traits2, dt); dim(traits2)
+
+
+## Check
+dim(traits1)[1] + dim(traits2)[1] == dim(traits)[1]
+ncol(traits1) == ncol(traits2)
+
+## Combine both tables
+names(traits1) == names(traits2)
+traits_new <- rbind(traits2, traits1)
+dim(traits_new); dim(traits)
+setDT(traits_new, key = "spfile")
+
+## Save table
+names(traits_new)
+names(traits_new)[c(1:4, 169:174, 209:210, 175:208, 5:168)]
+traits_new <- traits_new[, c(1:4, 169:174, 209:210, 175:208, 5:168)]
+write.csv(traits_new, file = file.path(output_dir, 
+                                  paste0("invert_overlap_traits_UPDATED_", 
+                                         Sys.Date(), ".csv")), 
           row.names = FALSE)

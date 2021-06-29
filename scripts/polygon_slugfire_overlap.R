@@ -15,11 +15,6 @@ polygon_slugfire_overlap <- function(species_name, species_poly, shapefile_dir,
                 file.path(shapefile_dir, species_name), ".shp ",
                 file.path(shapefile_dir, species_name), ".tif"))
   
-  # ##  !! BEWARE OF HARDCODED EXTENT, RES I& CRS N SYSTEM CALL !!
-  # system(paste0("gdalwarp -overwrite -ot Byte -te -2214250 -4876750 2187750 -1110750 -tr 250 250 -s_srs 'EPSG:4326' -t_srs '+proj=aea +lat_1=-18 +lat_2=-36 +lat_0=0 +lon_0=134 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs' ",
-  #               file.path(shapefile_dir, species_name), ".tif ",
-  #               file.path(shapefile_dir, species_name), "_p.tif"))
-  
   system(paste0("gdalwarp -overwrite -ot Byte -tr ", 
                 paste(fire_res, collapse = " "), " -te ", 
                 paste(fire_extent[1], fire_extent[3], 
