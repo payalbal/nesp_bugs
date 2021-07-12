@@ -103,7 +103,7 @@ removed_dups <- c("b05771ae-bda7-497a-87c4-b55a0ebc4ca1",
                   "0bb19498-874f-4c6c-a637-124ec9878130")
 
 afd_species <- afd_species[which(afd_species$TAXON_GUID %!in% removed_dups),]
-readr::write_csv(afd_species, "./output/afd_species_clean.csv")
+readr::write_csv(afd_species, "./outputs/afd_species_clean.csv")
 
 ## Checks
 sp_words <- sapply(strsplit(as.character(afd_species$VALID_NAME), " "), length)

@@ -623,10 +623,42 @@ classtab <- classtab[order(-N)]
 write.csv(classtab, file = file.path(output_dir, "data_byclass.csv"),
           row.names = FALSE)
 
+ordertab <- data[, .N, order]
+ordertab <- ordertab[order(-N)]
+write.csv(ordertab, file = file.path(output_dir, "data_byorder.csv"),
+          row.names = FALSE)
 length(unique(data$family))
 
 ## >> Summarize data by number of records for species
 counts <- data[, .N, spfile]
+counts.f <- as.data.table(table(counts$N))
+counts.f$V1 <- as.integer((counts.f$V1))
+names(counts.f) <- c("N_records", "N_species")
+
+counts.f$bins <- rep(character(), nrow(counts.f))
+counts.f[N_records == 1]$bins = "1"
+counts.f[N_records == 2]$bins = "2"
+counts.f[N_records == 3]$bins = "3"
+counts.f[N_records == 4]$bins = "4"
+counts.f[N_records == 5]$bins = "5"
+counts.f[N_records > 5 & N_records <= 10]$bins = "6-10"
+counts.f[N_records > 10 & N_records <= 20]$bins = "11-20"
+counts.f[N_records > 20 & N_records <= 50]$bins = "21-50"
+counts.f[N_records > 50 & N_records <= 100]$bins = "51-100"
+counts.f[N_records > 100 & N_records <= 500]$bins = "101-500"
+counts.f[N_records > 500 ]$bins = ">500"
+
+counts.ff <- counts.f[, .(N=sum(N_species)), by=bins]
+
+p <- barplot(counts.ff$N, ylim = c(0, 15000), names.arg = counts.ff$bins, 
+             space = 0, axes = FALSE,
+             xlab = "Number of records", 
+             ylab = "Number of species")
+xval = seq(0, 16000, 2000)
+axis(side = 2, at = xval, labels = FALSE, xpd = TRUE)
+axis(side = 2, at = xval, tick = FALSE, labels = xval, xpd = TRUE)
+text(p, counts.ff$N + 500*sign(counts.ff$N), labels = counts.ff$N, xpd = TRUE)
+
 
 count1 <- counts[which(counts$N == 1)]
 message(cat("Number of species with 1 record in cleaned ALA data: "),

@@ -199,7 +199,7 @@ rownames(dat_counts) <- gsub(".rds", "", basename(ala))
 saveRDS(dat_counts, file = file.path(output_dir, "ala_counts.rds"))
 
 saveRDS(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".rds")))
-write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".csv")))
+write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Date(),".csv")), row.names = FALSE)
 
 
 

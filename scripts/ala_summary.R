@@ -31,9 +31,9 @@ message(cat("Number of species in AFD checklist: "),
 ## Load ALA data
 ala_raw <- readRDS(file.path(output_dir, "merged_ala_2020-10-02.rds"))
 ala_dat <- list.files(output_dir, 
-                      pattern = "clean1_ala*.*.rds$", 
+                      pattern = "clean1_ala*.*.csv$", 
                       full.names = TRUE)
-ala_dat <- readRDS(ala_dat)
+ala_dat <- fread(ala_dat)
 ala_species <- sort(unique(ala_dat$scientificName))
 message(cat("Number of unique species in ALA data: "),
         length(ala_species))
@@ -57,7 +57,7 @@ message(cat("Number of species in cleaned ALA data: "),
         length(unique(ala_dat$scientificName)))
 message(cat("Cleaned ALA data file: \n"),
         paste0(list.files(output_dir, 
-                          pattern = "clean_ala", 
+                          pattern = "clean1_ala", 
                           full.names = TRUE), sep = "\n"))
 
 ## Data lost in cleaning

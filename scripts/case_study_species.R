@@ -98,6 +98,9 @@ counts[is.na(counts)] <- 0
 setDT(counts, key = "spfile")
 counts[ala == 0]
 
+write.csv(ala_plus, file = file.path(casestudy_dir, "data_casestudy_Q1.csv"),
+          row.names = FALSE)
+
 ## >> >> ALA only ####
 ala_only <- ala_plus[data_type == "ala"]; dim(ala_only)
 length(unique(ala_only$spfile))
@@ -280,8 +283,38 @@ message(cat("Number of output files: "),
 ## Output table
 out <- do.call("rbind", lapply(csvfiles, fread)); dim(out)
 names(out)[1] <- "spfile"
+
+message(cat("Check if #points overlapping with fire is always <= Total # points for species: "),
+        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3, Fire_Class_4, Fire_Class_5)], na.rm = TRUE) <= out$Occurrence_Points))
+message(cat("Check for NAs: "),
+        sum(is.na(out)))
+num <- grep("Fire_Class_", names(out))
+message(cat("Number of species with 0 overlap: "),
+        sum(rowSums(out[, ..num]) == 0))
+rm(num)
+
+## Add percentage overlap columns
+out$Overlap_Points_Fire345_GEEBAM2_as_unburnt <- 
+  ((out$Fire_Class_3 + out$Fire_Class_4 + out$Fire_Class_5)/
+     (out$Occurrence_Points - out$Fire_Class_1)) * 100
+
+out$Overlap_Points_Fire2345_GEEBAM2_as_burnt <- 
+  ((out$Fire_Class_2 + out$Fire_Class_3 + out$Fire_Class_4 + out$Fire_Class_5)/
+     (out$Occurrence_Points - out$Fire_Class_1)) * 100
+
+out$Overlap_Points_Severe_Fire45 <- 
+  ((out$Fire_Class_4 + out$Fire_Class_5)/
+     (out$Occurrence_Points - out$Fire_Class_1)) * 100
+
+sum(is.na(out$Overlap_Points_Fire345_GEEBAM2_as_unburnt))
+sum(is.na(out$Overlap_Points_Fire2345_GEEBAM2_as_burnt))
+sum(is.na(out$Overlap_Points_Severe_Fire45))
+
+## Save table
+names(out)[grep("Fire_Class_", names(out))] <- paste0(names(out)[grep("Fire_Class_", names(out))], "_Points")
 setDT(out, key = "spfile")
-write.csv(out, file = file.path(casestudy_dir, "species_points_fireoverlap.csv"), row.names = FALSE)
+write.csv(out, file = file.path(casestudy_dir, "species_points_fireoverlap.csv"), 
+          row.names = FALSE)
 
 
 ## >> Polygon overlap ####
@@ -315,15 +348,141 @@ length(polygon_list) - length(csvfiles)
 ## Output table
 out <- do.call("rbind", lapply(csvfiles, fread)); dim(out)
 names(out)[1] <- "spfile"
+
+message(cat("Check if area overlapping with fire is always <= Total polygon area for species: "),
+        all(rowSums(out[,.(Fire_Class_1, Fire_Class_2, Fire_Class_3, Fire_Class_4, Fire_Class_5)]) <= out$Species_Polygon))
+message(cat("Check for NAs: "),
+        sum(is.na(out)))
+message(cat("Number of species with Species_Polygon area = 0: "),
+        sum(out$Species_Polygon == 0))
+out[which(out$Species_Polygon == 0)]
+  ## all 21 species showing zero fire overlap
+
+## Add percentage overlap columns
+out$Overlap_Polygons_Fire345_GEEBAM2_as_unburnt <- 
+  ((out$Fire_Class_3 + out$Fire_Class_4 + out$Fire_Class_5)/
+     (out$Species_Polygon - out$Fire_Class_1)) * 100
+out$Overlap_Polygons_Fire2345_GEEBAM2_as_burnt <- 
+  ((out$Fire_Class_2 + out$Fire_Class_3 + out$Fire_Class_4 + out$Fire_Class_5)/
+     (out$Species_Polygon - out$Fire_Class_1)) * 100
+out$Overlap_Polygons_Severe_Fire45 <- 
+  ((out$Fire_Class_4 + out$Fire_Class_5)/
+     (out$Species_Polygon - out$Fire_Class_1)) * 100
+
+sum(is.na(out$Overlap_Polygons_Fire345_GEEBAM2_as_unburnt))
+sum(is.na(out$Overlap_Polygons_Fire2345_GEEBAM2_as_burnt))
+sum(is.na(out$Overlap_Polygons_Severe_Fire45))
+
+## Save table
+names(out)[grep("Fire_Class_", names(out))] <- paste0(names(out)[grep("Fire_Class_", names(out))], "_Area")
 setDT(out, key = "spfile")
-write.csv(out, file = file.path(casestudy_dir, "species_polygon_fireoverlap.csv"),
+write.csv(out, file = file.path(casestudy_dir, "species_polygon_fireoverlap.csv"), 
           row.names = FALSE)
 
 
+## IV. Output table for ALA only data ####
+## >> Combine point and polygon outputs
+poly <- fread(file.path(casestudy_dir, "species_polygon_fireoverlap.csv")); dim(poly)
+point <- fread(file.path(casestudy_dir, "species_points_fireoverlap.csv")); dim(point)
+  ## we can lose the 6 species without polygons
+
+## Merge rows for species with polygon overlap innfo (n = 29029)
+out <- merge(point, poly, by = "spfile"); dim(out)
+setDT(out, key = "spfile")
+rm(point, poly)
+
+## Add tax info
+tax <- fread(file.path(output_dir, "data_ALAnonALA_wgs84_corrected_taxinfo.csv"))
+all(out$spfile %in% tax$spfile)
+tax <- tax[spfile %in% out$spfile]
+setDT(tax, key = "spfile")
+
+dim(out); dim(tax)
+out <- merge(out, tax); dim(out)
+
+## Total number of points overlaping GEEBAM
+grep("_Points$", names(out), value = TRUE)[1:5]
+num <- grep("_Points$", names(out), value = TRUE)[1:5]
+out$Total_fire_points <- rowSums(out[, ..num])
+nrow(out[Total_fire_points == 0])
+
+## Total polygon area overlaping GEEBAM
+grep("_Area$", names(out), value = TRUE)[1:5]
+num <- grep("_Area$", names(out), value = TRUE)[1:5]
+out$Total_fire_polygon <- rowSums(out[, ..num])
+nrow(out[Total_fire_polygon == 0])
+
+## Add information from species_EOO_AOO_ahullareas.csv
+polyareas <- fread(file.path(casestudy_dir, "species_EOO_AOO_ahullareas.csv"))
+polyareas <- setDT(polyareas, key = "spfile")[spfile %in% out$spfile][, .(spfile, EOO, AOO, Nbe_unique_occ., scientificName)]
+dim(out); length(unique(out$spfile)); length(unique(out$scientificName))
+dim(polyareas); length(unique(polyareas$spfile)); length(unique(polyareas$scientificName))
+
+  # ## Check
+  # out2 <- merge(out, polyareas, by = "spfile")
+  # all(out2$scientificName.x == out2$scientificName.y)
+  # which(!(out2$scientificName.x == out2$scientificName.y))
+  # sum(!(out2$scientificName.x == out2$scientificName.y))
+  # out2[which(!(out2$scientificName.x == out2$scientificName.y))][,.(scientificName.x, scientificName.y)]
+  # ## out2$scientificName.x & out2$scientificName.y are the same
+  # rm(out2)
+polyareas[, scientificName := NULL]
+out <- merge(out, polyareas, by = "spfile"); dim(out)
+
+## Save table
+all(out$Nbe_unique_occ. == out$Occurrence_Points)
+out[, Nbe_unique_occ. := NULL]
+
+names(out[, c(1, 20:23, 2:6, 8:10, 24, 7, 11:15, 17:19, 25, 16, 26:27)])
+out <- out[, c(1, 20:23, 2:6, 8:10, 24, 7, 11:15, 17:19, 25, 16, 26:27)]
+setDT(out, key = "spfile")
+write.csv(out, file = file.path(casestudy_dir, paste0("ALAonly_overlap.csv")), 
+          row.names = FALSE)
 
 
+## V. Output table for ALA + state/museum data ####
+sum(duplicated(out$spfile))
 
-## IV. Plot differences ####
+all_out <- fread(file.path(output_dir, "invert_overlap_2021-06-24.csv"))
+all_out <- all_out[spfile %in% out$spfile]
+names(all_out)
+all_out <- all_out[, 1:28]
+all_out[, PAA_Points := NULL]
+
+write.csv(all_out, file = file.path(casestudy_dir, "ALAplus_overlap.csv"),
+          row.names = FALSE)
+
+
+## VI. Combine outputs for datasets ####
+ala_only <- fread(file.path(casestudy_dir, "ALAonly_overlap.csv"))
+ala_plus <- fread(file.path(casestudy_dir, "ALAplus_overlap.csv"))
+all(names(ala_only) == names(ala_plus))
+
+## Remove columns
+num <- grep("Fire_Class_", names(ala_only), invert = TRUE)
+ala_only <- ala_only[, ..num]
+ala_plus <- ala_plus[, ..num]
+all(names(ala_only) == names(ala_plus))
+
+all(ala_only$scientificName == ala_plus$scientificName)
+ala_only <- ala_only[, c(1, 6:17)] ## drop scientificName, class, order, family columns
+
+## Rename columns
+names(ala_only)[-1] <- paste0(names(ala_only)[-1], "_ALAonly")
+names(ala_plus)[-c(1:5)] <- paste0(names(ala_plus)[-c(1:5)], "_ALAplus")
+
+## Merge
+setDT(ala_only, key = "spfile")
+setDT(ala_plus, key = "spfile")
+all <- merge(ala_plus, ala_only, by = "spfile")
+names(all)
+
+setDT(all, key = "spfile")
+setorder(all, "EOO_ALAplus", "EOO_ALAonly", na.last = TRUE) 
+write.csv(all, file = file.path(casestudy_dir, "datasources_compare.csv"),
+          row.names = FALSE)
+
+## V. Plot differences ####
 ## >> Differences in EOO ####
 ## ALA only data
 out1 <- fread(file.path(casestudy_dir, "species_EOO_AOO_ahullareas.csv"))
