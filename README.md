@@ -1,43 +1,67 @@
-# nesp_bugs.Rproj
-NESP invetebrate project titled 'Fire-affected invertebrates: Priority species and management response'
-
-[---Under dev---]
-
-## Webpage
-
+# NESP Threatened Species Recovery Hub Project 8.3.1: ‘Fire-affected invertebrates: priority species and management response’.
 
 ## Team
-John Woinarski, CDU <br>
-Jess Marsh, CDU <br>
-Payal Bal, UoM <br>
+John Woinarski, Charles Darwin University <br>
+Jess Marsh, Charles Darwin University <br>
+Payal Bal, University of Melbourne <br>
 
 ## Collaborators
-...
+•	August Hao - data cleaning discussions and scripts <br>
+•	Lee Belbin, Matilda Stevenson – ALA data cleaning discussions and advice on ala4R <br>
+•	Casey Visitin – Collaborator on overlap script using gdal functions <br>
+•	Darren Southwell – SDMs for priority invertebrates <br>
+
 
 #### Contact author
 payal.bal@unimelb.edu.au
-
-## Biodiversity data sources
-ALA: https://www.ala.org.au/
-
-  
-## Covariate data sources
-...
   
 ## Workflow
-1. Create clean taxonomic checklist for analyses 
-+ Get checklist from Asutralian Faunal Directory: https://biodiversity.org.au/afd/home
-+ ... list steps...
+1.	Cleaning AFD checklist: https://github.com/payalbal/nesp_bugs/blob/master/scripts/splist_AFD.R 
+a.	Function to remove improper names: https://github.com/payalbal/nesp_bugs/blob/master/scripts/remove_improper_names.R
 
-2. Download occurrence records from ALA
-function: get_ala_taxondata.R; get_ala_spdata.R
-script: download_ALA_bytaxon.R; download_ALA_byspecies.R
+2.	Download ALA data by phyla: https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_bytaxon.R 
+a.	Function to download data by phyla: https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_ala_taxondata.R 
 
-3. Clean ALAL data
+To download ALA data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_byspecies.R 
+o	Function to download data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_ala_spdata.R
 
-4. Summarise ALA data
+3.	ALA processing script: https://github.com/payalbal/nesp_bugs/blob/master/scripts/ala_processing1.R
+a.	Function to remove improper names: https://github.com/payalbal/nesp_bugs/blob/master/scripts/remove_improper_names.R
+b.	Function to find name source and habitat information (author: Matilda Stevenson, ALA): https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_source.R (uses ALA4R function under dev called ala_taxa())
+c.	Function to find AFD synonyms for species names: https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_AFDsynonyms.R
 
-5. Map data by species
+4.	Summary script for cleaned ALA data: https://github.com/payalbal/nesp_bugs/blob/master/scripts/ala_summary.R 
 
-6. Fire imapcts...
-...
+5.	Create mask from QGIS output: https://github.com/payalbal/nesp_bugs/blob/master/scripts/ausmask.R 
+
+6.	Format, combine and clean individual non-ALA datasheets: https://github.com/payalbal/nesp_bugs/blob/master/scripts/nonala_processing.R
+
+7.	Combine ALA and non-ALA data and format data table: https://github.com/payalbal/nesp_bugs/blob/master/scripts/data_ALAnonALA.R
+
+8.	Correcting species name & updating ALAnonALA data: https://github.com/payalbal/nesp_bugs/blob/master/scripts/data_correction_speciesnames.R
+
+9.	Create polygons using IUCN.eval() function from ConR package for all data: https://github.com/payalbal/nesp_bugs/blob/master/scripts/species_polygons.R  
+a.	Function based on IUCN.eval() function from ConR package: https://github.com/payalbal/nesp_bugs/blob/master/scripts/conr_iucn_eval.R  
+b.	To convert alpha hulls in the .rds file into shapefiles: https://github.com/payalbal/nesp_bugs/blob/master/scripts/rds_to_shp_conversion.R 
+
+10.	Prepare regional layers: https://github.com/payalbal/nesp_bugs/blob/master/scripts/regions.R 
+
+11.	Region overlaps: https://github.com/payalbal/nesp_bugs/blob/master/scripts/species_regionoverlap.R
+a.	Region overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/region_overlap.R
+
+12.	Prepare GEEBAM fire severity layer: https://github.com/payalbal/nesp_bugs/blob/master/scripts/firemap.R
+
+13.	For full extent including offland islands and territories: https://github.com/payalbal/nesp_bugs/blob/master/scripts/firemap_ausextent.R
+
+14.	Fire overlap for all species with point data: https://github.com/payalbal/nesp_bugs/blob/master/scripts/species_points_fireoverlap.R 
+a.	Points overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/points_overlap.R
+
+15.	Fire overlap for species with polygons: https://github.com/payalbal/nesp_bugs/blob/master/scripts/species_EOO_fireoverlap_paa.R 
+a.	Polygon overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/polygon_paa_overlap.R 
+
+16.	Combine polygon and point output table: https://github.com/payalbal/nesp_bugs/blob/master/scripts/fireoverlap_table_withPAA.R
+
+17.	Aquatic species overlaps: https://github.com/payalbal/nesp_bugs/blob/master/scripts/aquatic_inverts.R
+a.	Slugrisk point overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/points_slugrisk_overlap.R
+b.	Slugrisk polygon overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/polygon_slugrisk_overlap.R
+ 
