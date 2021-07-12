@@ -23,7 +23,7 @@ payal.bal@unimelb.edu.au <br> <br> <br>
 2.	Download ALA data by phyla: https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_bytaxon.R <br>
   a.	Function to download data by phyla: https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_ala_taxondata.R 
 
-To download ALA data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_byspecies.R <br>
+  To download ALA data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_byspecies.R <br>
   a.	Function to download data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_ala_spdata.R <br>
 
 3.	ALA processing script: https://github.com/payalbal/nesp_bugs/blob/master/scripts/ala_processing1.R <br>
