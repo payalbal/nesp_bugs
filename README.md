@@ -1,21 +1,22 @@
 # NESP Threatened Species Recovery Hub Project 8.3.1: ‘Fire-affected invertebrates: priority species and management response’.
 
+
 ## Team
-John Woinarski, Charles Darwin University <br>
-Jess Marsh, Charles Darwin University <br>
-Payal Bal, University of Melbourne <br>
+Jess Marsh, Payal Bal, Hannah Fraser, Kate Umbers, Aaron Greenville, Libby Rumpff, John Woinarski <br> <br>
+
 
 ## Collaborators
-•	August Hao - data cleaning discussions and scripts <br>
-•	Lee Belbin, Matilda Stevenson – ALA data cleaning discussions and advice on ala4R <br>
-•	Casey Visitin – Collaborator on overlap script using gdal functions <br>
-•	Darren Southwell – SDMs for priority invertebrates <br>
+August Hao - data cleaning discussions and scripts <br>
+Lee Belbin, Matilda Stevenson – ALA data cleaning discussions and advice on ala4R <br>
+Casey Visitin – Collaborator on overlap script using gdal functions <br>
+Darren Southwell, Diego Brizuela Torres, David Wilkinson  – SDMs for priority invertebrates <br>
 
 
-#### Contact author
-payal.bal@unimelb.edu.au
+## Contact author
+payal.bal@unimelb.edu.au <br> <br>
+
   
-## Workflow
+## Workflow in Rscripts
 1.	Cleaning AFD checklist: https://github.com/payalbal/nesp_bugs/blob/master/scripts/splist_AFD.R 
 a.	Function to remove improper names: https://github.com/payalbal/nesp_bugs/blob/master/scripts/remove_improper_names.R
 
