@@ -28,7 +28,7 @@ recovery_poly <- readOGR(file.path(bugs_dir,
                          layer = "regions")
 
 ## Reproject regions to match fire severity raster
-## NOTE: Cannot do this in one step eith gdal_rasterize (see commneted section below)
+## NOTE: Cannot do this in one step with gdal_rasterize (see commeted section below)
 infile <- file.path(bugs_dir, "Bushfire_recovery_regions", "regions.shp")
 outfile <- file.path(output_dir, "regions", "bushfire_recovery.tif")
 system(paste0("gdal_rasterize -at -a id -ot Byte -tr .0025 .0025 -l regions ",
