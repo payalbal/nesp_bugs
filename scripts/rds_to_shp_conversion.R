@@ -9,7 +9,7 @@ rm(x)
 species_polys <- readRDS(file.path(output_dir, "Species_alpha_hull_polygons.rds"))
 
 ## Associated species names
-all_species <- names(species_maps)
+all_species <- names(species_polys)
 
 ## Specify directory for writing the shapefiles
 shapefile_dir <- getwd()

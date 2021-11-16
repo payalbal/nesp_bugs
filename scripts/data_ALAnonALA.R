@@ -556,4 +556,4 @@ sum(x[grep("WA", x$data_source),]$N)
 
 ## >>>>>> NEXT SCRIPT <<<<<<< ####
 # data_correction_speciesname.R
-file.edit("/tempdata/workdir/nesp_bugs/scripts/data_ALAnonALA_corrections.R")
+file.edit("/tempdata/workdir/nesp_bugs/scripts/data_corrections_speciesnames.R")

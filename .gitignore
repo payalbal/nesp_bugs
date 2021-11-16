@@ -5,6 +5,7 @@ data/
 output/
 docs/
 scripts/archive/
+extras/
 
 # R files #
 ###########

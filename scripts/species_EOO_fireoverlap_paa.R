@@ -165,7 +165,3 @@ message(cat("NA in scientificName: "),
 
 message(cat("Total number of species: "),
         nrow(out))
-
-
-
-
