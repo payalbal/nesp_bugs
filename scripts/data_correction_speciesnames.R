@@ -453,3 +453,20 @@ length(list.files(spdata_dir, pattern = ".rds$"))
 length(all_species)
 rm(dat, save_spdata2)
 
+
+
+
+## Data for sharing publicly ####
+## For NESP report: avaibale at https://doi.org/10.5281/zenodo.5091296
+## Renamed as ALA_invertebrate_data_clean_2020-10-28.rds
+## Not yet masked, therefore many more records than in data_ALAnonALA_wgs84_corrected.csv
+y <- fread("/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/clean2_ala_2020-10-28.csv")
+
+## Subset csv to ALA data only and species not marked as sensitive (for sharing)
+x <- fread("/tempdata/research-cifs/uom_data/nesp_bugs_data/outputs/data_ALAnonALA_wgs84_corrected.csv")
+x <- x[sensitive != 1]
+unique(x$data_source)
+x <- x[data_source == "ALA"]
+dim(x)
+write.csv(x, file.path(output_dir, "data_invertebrates_ALAonly.csv"), 
+          row.names = FALSE)
