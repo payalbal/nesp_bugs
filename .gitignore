@@ -5,8 +5,8 @@ data/
 output/
 docs/
 scripts/archive/
-extras/
-mbraby/
+scripts/mbraby/
+scripts/extras/
 
 # R files #
 ###########
