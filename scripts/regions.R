@@ -70,7 +70,7 @@ state_poly <- readOGR(file.path(output_dir, "masks", "auslands_wgs84.shp"),
                       layer = "auslands_wgs84") 
 
 ## Reproject regions to match fire severity raster
-## NOTE: Cannot do this in one step eith gdal_rasterize (see commneted section below)
+## NOTE: Cannot do this in one step eith gdal_rasterize (see commneted section)
 infile <- file.path(output_dir, "masks", "auslands_wgs84.shp")
 outfile <- file.path(output_dir, "regions", "auslands_wgs84.tif")
 system(paste0("gdal_rasterize -at -a id_state -ot Byte -tr .0025 .0025 -l auslands_wgs84 ",

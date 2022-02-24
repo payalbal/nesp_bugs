@@ -27,7 +27,7 @@ if(!dir.exists(file.path(bugs_dir, "outputs", "native_vegetation"))){
 ## Load mask
 ausmask <- raster(file.path(output_dir, "masks", "ausmask_noaa_250mAlbersEA_NA.tif"))
 aus.crs <- crs(ausmask)
-aus.res <- res(ausmask)
+aus.res <- res(ausmask) ## 250m res
 
 
 
