@@ -14,7 +14,7 @@ rm(x)
 
 
 ## Files and folder
-bugs_dir = "/tempdata/research-cifs/uom_data/nesp_bugs_data"
+bugs_dir = file.path("/tempdata/research-cifs/6300-payalb/uom_data", "nesp_bugs_data")
 output_dir = file.path(bugs_dir, "outputs")
 corr_dir = file.path(bugs_dir, "data_corrections")
 

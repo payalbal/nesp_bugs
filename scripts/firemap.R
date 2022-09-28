@@ -47,7 +47,7 @@ rm(paa)
 ## Vegetation layer: NVIS ####
 ## Source: https://www.environment.gov.au/land/native-vegetation/national-vegetation-information-system/data-products
 
-## Recalssify NVIS data to include native vegetation only & convert to tiff
+## Reclassify NVIS data to include native vegetation only & convert to tiff
 infile <- file.path(bugs_dir, "native_vegetation", "GRID_NVIS6_0_AUST_EXT_MVG/aus6_0e_mvg/z001001.adf")
 outfile <- file.path(output_dir, "native_vegetation", "nvis_v6.tif")
 
@@ -72,7 +72,7 @@ system(paste0("gdalwarp -overwrite -ot Byte -tr ",
 gdalUtils::gdalinfo(outfile)
 
 raster(outfile)
-sort(unique(na.omit(temp)))
+sort(unique(na.omit(raster(outfile))))
 
 nvis.extent <- extent(raster(outfile))
 

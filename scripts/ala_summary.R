@@ -12,7 +12,8 @@ lapply(x, require, character.only = TRUE)
 rm(x)
 
 ## Server paths
-output_dir = file.path(getwd(), "nesp_bugs", "outputs")
+bugs_dir = file.path("/tempdata/research-cifs/6300-payalb/uom_data", "nesp_bugs_data")
+output_dir = file.path(bugs_dir, "outputs")
 source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_taxondata.R"))
 
 # ## Local paths
@@ -37,6 +38,44 @@ ala_dat <- fread(ala_dat)
 ala_species <- sort(unique(ala_dat$scientificName))
 message(cat("Number of unique species in ALA data: "),
         length(ala_species))
+
+
+## Recorded locational accuracy in datasets
+
+grep("coordinate|Coordinate|Longitude|longitude|long|Long|Latitude|latitude|Lat|lat", names(ala_dat), value = TRUE)
+nrow(ala_dat[is.na(coordinatePrecision)])
+nrow(ala_dat[!is.na(coordinateUncertaintyInMetres)])
+
+summary(ala_dat[!is.na(coordinateUncertaintyInMetres)]$coordinateUncertaintyInMetres)
+summary(ala_dat[!is.na(coordinateUncertaintyInMetres)]$coordinateUncertaintyInMetres)
+length(unique(ala_dat[!is.na(coordinateUncertaintyInMetres)]$coordinateUncertaintyInMetres))
+
+t1 <- ala_dat[, .N, coordinateUncertaintyInMetres]
+t1 <- data.table::fread("/Users/payalb/Downloads/t1.csv")
+
+message(cat("Total number of records in data: ",
+            sum(t1$N)))
+
+message(cat("Number of records with NA in coordinateUncertaintyInMetres: ",
+            t1[is.na(coordinateUncertaintyInMetres)]$N))
+message(cat("Proportion of records with NA in coordinateUncertaintyInMetres: ",
+            (t1[is.na(coordinateUncertaintyInMetres)]$N)/sum(t1$N)))
+
+plot(t1)
+plot(t1[!is.na(coordinateUncertaintyInMetres)])
+
+message(cat("Number of records with value in coordinateUncertaintyInMetres: ",
+            sum(t1[!is.na(coordinateUncertaintyInMetres)]$N)))
+
+message(cat("Number of records with coordinateUncertaintyInMetres <= 10000 (3rd quartile): ",
+            sum(t1[which(t1$coordinateUncertaintyInMetres <= 10000) , ]$N)))
+message(cat("Proportionn of records with coordinateUncertaintyInMetres <= 10000 (3rd quartile): ",
+            sum(t1[which(t1$coordinateUncertaintyInMetres <= 10000) , ]$N)/sum(t1$N)))
+
+message(cat("Number of records with coordinateUncertaintyInMetres <= 1000 (1st quartile): ",
+            sum(t1[which(t1$coordinateUncertaintyInMetres <= 1000) , ]$N)))
+message(cat("Proportionn of records with coordinateUncertaintyInMetres <= 1000 (1st quartile): ",
+            sum(t1[which(t1$coordinateUncertaintyInMetres <= 1000) , ]$N)/sum(t1$N)))
 
 
 ## Data cleaning summary ####
