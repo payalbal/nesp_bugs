@@ -2,7 +2,7 @@
 
 
 ## Team
-Jess Marsh, Payal Bal, Hannah Fraser, Kate Umbers, Aaron Greenville, Libby Rumpff, John Woinarski <br> <br> <br>
+John Woinarski, Libby Rumpff, Jess Marsh, Payal Bal  <br> <br> <br>
 
 
 ## Collaborators
