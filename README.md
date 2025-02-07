@@ -8,7 +8,7 @@ John Woinarski, Libby Rumpff, Jess Marsh, Payal Bal  <br> <br> <br>
 ## Collaborators
 August Hao - data cleaning discussions and scripts <br>
 Lee Belbin, Matilda Stevenson – ALA data cleaning discussions and advice on ala4R <br>
-Casey Visitin – Collaborator on overlap script using gdal functions <br>
+Casey Visitin – Collaborator on overlap script using gdal functions <br> <br> <br>
 
 
 ## Data
