@@ -27,8 +27,8 @@ payal.bal@unimelb.edu.au <br> <br> <br>
 2.	Download ALA data by phyla: https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_bytaxon.R <br>
   *	Function to download data by phyla: https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_ala_taxondata.R <br>
 
-  To download ALA data by species: [https://github.com/payalbal/nesp_bugs/blob/master/scripts/download_ALA_byspecies.R](https://github.com/payalbal/nesp_bugs/blob/master/scripts/extras/download_ALA_byspecies.R) <br>
-  *	Function to download data by species: [https://github.com/payalbal/nesp_bugs/blob/master/scripts/get_ala_spdata.R](https://github.com/payalbal/nesp_bugs/blob/master/scripts/extras/get_ala_spdata.R) <br>
+  To download ALA data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/extras/download_ALA_byspecies.R <br>
+  *	Function to download data by species: https://github.com/payalbal/nesp_bugs/blob/master/scripts/extras/get_ala_spdata.R <br>
 
 3.	ALA processing script: https://github.com/payalbal/nesp_bugs/blob/master/scripts/ala_processing1.R <br>
   *	Function to remove improper names: https://github.com/payalbal/nesp_bugs/blob/master/scripts/remove_improper_names.R <br>
@@ -67,6 +67,6 @@ payal.bal@unimelb.edu.au <br> <br> <br>
 16.	Combine polygon and point output table: https://github.com/payalbal/nesp_bugs/blob/master/scripts/fireoverlap_table_withPAA.R <br>
 
 17.	Aquatic species overlaps: https://github.com/payalbal/nesp_bugs/blob/master/scripts/aquatic_inverts.R <br>
-  *	Slugrisk point overlap function: [https://github.com/payalbal/nesp_bugs/blob/master/scripts/points_slugrisk_overlap.R](https://github.com/payalbal/nesp_bugs/blob/master/scripts/points_slugfire_overlap.R) <br>
-  *	Slugrisk polygon overlap function: [https://github.com/payalbal/nesp_bugs/blob/master/scripts/polygon_slugrisk_overlap.R](https://github.com/payalbal/nesp_bugs/blob/master/scripts/polygon_slugfire_overlap.R) <br>
+  *	Slugrisk point overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/points_slugfire_overlap.R <br>
+  *	Slugrisk polygon overlap function: https://github.com/payalbal/nesp_bugs/blob/master/scripts/polygon_slugfire_overlap.R <br>
  
