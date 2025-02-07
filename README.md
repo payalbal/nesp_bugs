@@ -9,7 +9,6 @@ John Woinarski, Libby Rumpff, Jess Marsh, Payal Bal  <br> <br> <br>
 August Hao - data cleaning discussions and scripts <br>
 Lee Belbin, Matilda Stevenson – ALA data cleaning discussions and advice on ala4R <br>
 Casey Visitin – Collaborator on overlap script using gdal functions <br>
-Darren Southwell, Diego Brizuela Torres, David Wilkinson  – SDMs for priority invertebrates <br> <br> <br>
 
 
 ## Data
